@@ -11,6 +11,8 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.core.config import settings
 from app.db.base import Base
 
+from app.models import User
+
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

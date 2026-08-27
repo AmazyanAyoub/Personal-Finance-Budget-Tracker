@@ -2,8 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.api.routes.auth import router as auth_router
+
+
 
 app = FastAPI(title="Personal Finance & Budget Tracker API")
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
