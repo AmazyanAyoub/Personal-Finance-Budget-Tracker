@@ -66,3 +66,77 @@ export async function getOnboardingStatus(token: string) {
     } | null;
   }>;
 }
+
+
+export type IncomeEntry = {
+  id: number;
+  source: "fixed" | "freelance";
+  amount_cents: number;
+  date: string;
+  note: string | null;
+  created_at: string;
+};
+
+export async function listIncomeEntries(token: string, year?: number, month?: number) {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (month) params.set("month", String(month));
+  const res = await fetch(`${API_URL}/income-entries?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to load income entries");
+  return res.json() as Promise<IncomeEntry[]>;
+}
+
+export async function getMonthlyIncomeSummary(token: string, year: number, month: number) {
+  const res = await fetch(`${API_URL}/income-entries/summary?year=${year}&month=${month}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to load income summary");
+  return res.json() as Promise<{
+    year: number;
+    month: number;
+    total_cents: number;
+    fixed_cents: number;
+    freelance_cents: number;
+    entry_count: number;
+  }>;
+}
+
+export async function createIncomeEntry(
+  token: string,
+  data: { source: string; amount_cents: number; date: string; note?: string }
+) {
+  const res = await fetch(`${API_URL}/income-entries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Failed to create income entry");
+  }
+  return res.json();
+}
+
+export async function updateIncomeEntry(
+  token: string,
+  id: number,
+  data: Partial<{ source: string; amount_cents: number; date: string; note: string }>
+) {
+  const res = await fetch(`${API_URL}/income-entries/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update income entry");
+  return res.json();
+}
+
+export async function deleteIncomeEntry(token: string, id: number) {
+  const res = await fetch(`${API_URL}/income-entries/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to delete income entry");
+}

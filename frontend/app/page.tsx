@@ -51,6 +51,7 @@ function HomeContent() {
           {onboarding.ef_multiplier}x
         </p>
       )}
+      <a href="/income" className="underline">Manage Income</a>
       <button onClick={handleLogout} className="border rounded px-3 py-2">
         Log out
       </button>
