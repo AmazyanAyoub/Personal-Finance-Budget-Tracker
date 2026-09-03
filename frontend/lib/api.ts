@@ -25,3 +25,44 @@ export async function getMe(token: string) {
   if (!res.ok) throw new Error("Unauthorized");
   return res.json() as Promise<{ id: number; email: string }>;
 }
+
+export async function submitOnboarding(
+  token: string,
+  data: {
+    income_mode: string;
+    freedom_funds_pct: number;
+    essentials_pct: number;
+    lifestyle_pct: number;
+    ef_multiplier: number;
+  }
+) {
+  const res = await fetch(`${API_URL}/onboarding`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Onboarding failed");
+  }
+  return res.json();
+}
+
+export async function getOnboardingStatus(token: string) {
+  const res = await fetch(`${API_URL}/onboarding/status`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to load onboarding status");
+  return res.json() as Promise<{
+    is_onboarded: boolean;
+    income_mode: string | null;
+    ef_multiplier: number | null;
+    current_budget_split: {
+      id: number;
+      freedom_funds_pct: number;
+      essentials_pct: number;
+      lifestyle_pct: number;
+      effective_date: string;
+    } | null;
+  }>;
+}

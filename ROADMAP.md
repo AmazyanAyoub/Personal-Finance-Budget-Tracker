@@ -12,11 +12,11 @@ Backend (FastAPI + Postgres connection + SQLAlchemy + Alembic wired up) and fron
 
 ### ✅ Phase 1 — Auth (single-user JWT)
 `User` model + migration, password hashing (bcrypt via passlib), JWT issuance/verification (`python-jose`), protected `/auth/me` route, one-time seed script (`create_user.py`) instead of a public signup endpoint. Frontend: login page, token in `localStorage`, `AuthGuard` redirecting unauthenticated visits to `/login`.
-**Status: Done.** Full explanation: [PHASE_1_AUTH.md](PHASE_1_AUTH.md). Live call-by-call trace tool: `backend/scripts/trace_auth_flow.py` → writes `backend/AUTH_TRACE.md`.
+**Status: Done.** Full explanation: [docs/PHASE_1_AUTH.md](docs/PHASE_1_AUTH.md), diagram: [docs/AUTH_FLOW.md](docs/AUTH_FLOW.md). Live call-by-call trace tool: `backend/scripts/trace_auth_flow.py` → writes `backend/AUTH_TRACE.md`.
 
-### ⬜ Phase 2 — Core data models & onboarding
+### ✅ Phase 2 — Core data models & onboarding
 Models: `IncomeModeConfig`, `BudgetSplit` (versioned by `effective_date`), `EmergencyFundConfig` (multiplier), `Debt`, `Category`, `IncomeEntry`, `Expense` + migrations. Onboarding flow: pick income mode, set budget split % (must sum to 100), set EF multiplier (3–6).
-**Done when:** onboarding persists all config; changing the budget split later creates a new versioned row instead of overwriting, so past months still resolve to the split that was active then.
+**Status: Done.** Full explanation: [docs/PHASE_2_DATA_MODELS.md](docs/PHASE_2_DATA_MODELS.md).
 
 ### ⬜ Phase 3 — Income CRUD
 Log/edit/delete income entries (fixed and/or freelance, depending on chosen mode). Monthly aggregation = sum of entries falling in that calendar month.
