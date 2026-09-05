@@ -3,13 +3,13 @@ from pydantic import BaseModel, field_validator
 from app.models.enums import IncomeMode
 from app.schemas.budget import BudgetSplitOut
 
-
 class OnboardingRequest(BaseModel):
     income_mode: IncomeMode
     freedom_funds_pct: int
     essentials_pct: int
     lifestyle_pct: int
     ef_multiplier: int
+    estimated_monthly_income_cents: int
 
     @field_validator("lifestyle_pct")
     @classmethod
@@ -26,9 +26,16 @@ class OnboardingRequest(BaseModel):
             raise ValueError("ef_multiplier must be between 3 and 6")
         return v
 
+    @field_validator("estimated_monthly_income_cents")
+    @classmethod
+    def validate_income_positive(cls, v):
+        if v <= 0:
+            raise ValueError("estimated_monthly_income_cents must be positive")
+        return v
 
 class OnboardingStatus(BaseModel):
     is_onboarded: bool
     income_mode: IncomeMode | None = None
     ef_multiplier: int | None = None
+    ef_target_cents: int | None = None
     current_budget_split: BudgetSplitOut | None = None

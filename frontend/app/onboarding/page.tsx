@@ -19,6 +19,7 @@ function OnboardingForm() {
   const [essentials, setEssentials] = useState(50);
   const [lifestyle, setLifestyle] = useState(30);
   const [efMultiplier, setEfMultiplier] = useState(3);
+  const [estimatedIncome, setEstimatedIncome] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,6 +31,11 @@ function OnboardingForm() {
 
     if (total !== 100) {
       setError(`Percentages must sum to 100 (currently ${total})`);
+      return;
+    }
+    const estimateCents = Math.round(Number(estimatedIncome) * 100);
+    if (!estimateCents || estimateCents <= 0) {
+      setError("Enter a valid estimated monthly income");
       return;
     }
 
@@ -47,6 +53,7 @@ function OnboardingForm() {
         essentials_pct: essentials,
         lifestyle_pct: lifestyle,
         ef_multiplier: efMultiplier,
+        estimated_monthly_income_cents: estimateCents,
       });
       router.push("/");
     } catch (err) {
@@ -81,54 +88,45 @@ function OnboardingForm() {
           <label className="font-medium">Budget split — current total: {total}</label>
           <label className="flex items-center justify-between gap-2">
             Freedom Funds %
-            <input
-              type="number"
-              value={freedomFunds}
-              onChange={(e) => setFreedomFunds(Number(e.target.value))}
-              className="w-20 border rounded px-2 py-1"
-            />
+            <input type="number" value={freedomFunds} onChange={(e) => setFreedomFunds(Number(e.target.value))}
+              className="w-20 border rounded px-2 py-1" />
           </label>
           <label className="flex items-center justify-between gap-2">
             Essentials %
-            <input
-              type="number"
-              value={essentials}
-              onChange={(e) => setEssentials(Number(e.target.value))}
-              className="w-20 border rounded px-2 py-1"
-            />
+            <input type="number" value={essentials} onChange={(e) => setEssentials(Number(e.target.value))}
+              className="w-20 border rounded px-2 py-1" />
           </label>
           <label className="flex items-center justify-between gap-2">
             Lifestyle %
-            <input
-              type="number"
-              value={lifestyle}
-              onChange={(e) => setLifestyle(Number(e.target.value))}
-              className="w-20 border rounded px-2 py-1"
-            />
+            <input type="number" value={lifestyle} onChange={(e) => setLifestyle(Number(e.target.value))}
+              className="w-20 border rounded px-2 py-1" />
           </label>
         </section>
 
         <section className="flex flex-col gap-2">
-          <label className="flex items-center justify-between gap-2 font-medium">
-            Emergency fund target (months of Essentials, 3-6)
-            <input
-              type="number"
-              min={3}
-              max={6}
-              value={efMultiplier}
-              onChange={(e) => setEfMultiplier(Number(e.target.value))}
-              className="w-20 border rounded px-2 py-1"
-            />
+          <label className="font-medium">Emergency fund</label>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Estimated monthly income (MAD)"
+            value={estimatedIncome}
+            onChange={(e) => setEstimatedIncome(e.target.value)}
+            className="border rounded px-2 py-1"
+            required
+          />
+          <p className="text-xs text-gray-500">
+            Used once, only to compute your fixed EF target — it does not affect your actual income tracking.
+          </p>
+          <label className="flex items-center justify-between gap-2">
+            Months of Essentials to save (3-6)
+            <input type="number" min={3} max={6} value={efMultiplier}
+              onChange={(e) => setEfMultiplier(Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
           </label>
         </section>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-black text-white rounded px-3 py-2 disabled:opacity-50"
-        >
+        <button type="submit" disabled={submitting} className="bg-black text-white rounded px-3 py-2 disabled:opacity-50">
           {submitting ? "Saving..." : "Finish setup"}
         </button>
       </form>

@@ -6,6 +6,11 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.budget import router as budget_router
 from app.api.routes.onboarding import router as onboarding_router
 from app.api.routes.income import router as income_router
+from app.api.routes.categories import router as categories_router
+from app.api.routes.expenses import router as expenses_router
+from app.api.routes.budget_engine import router as budget_engine_router
+from app.api.routes.debts import router as debts_router
+
 
 
 
@@ -16,6 +21,10 @@ app.include_router(auth_router)
 app.include_router(budget_router)
 app.include_router(onboarding_router)
 app.include_router(income_router)
+app.include_router(categories_router)
+app.include_router(expenses_router)
+app.include_router(budget_engine_router)
+app.include_router(debts_router)
 
 app.add_middleware(
     CORSMiddleware,

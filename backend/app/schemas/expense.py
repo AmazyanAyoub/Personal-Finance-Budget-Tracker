@@ -2,14 +2,12 @@ from datetime import date as date_type, datetime
 
 from pydantic import BaseModel, field_validator
 
-from app.models.enums import IncomeSource
 
-
-class IncomeEntryCreate(BaseModel):
-    source: IncomeSource
+class ExpenseCreate(BaseModel):
     amount_cents: int
+    note: str
     date: date_type
-    note: str | None = None
+    category_id: int
 
     @field_validator("amount_cents")
     @classmethod
@@ -19,11 +17,11 @@ class IncomeEntryCreate(BaseModel):
         return v
 
 
-class IncomeEntryUpdate(BaseModel):
-    source: IncomeSource | None = None
+class ExpenseUpdate(BaseModel):
     amount_cents: int | None = None
-    date: date_type | None = None
     note: str | None = None
+    date: date_type | None = None
+    category_id: int | None = None
 
     @field_validator("amount_cents")
     @classmethod
@@ -33,22 +31,22 @@ class IncomeEntryUpdate(BaseModel):
         return v
 
 
-class IncomeEntryOut(BaseModel):
+class ExpenseOut(BaseModel):
     id: int
-    source: IncomeSource
     amount_cents: int
+    note: str
     date: date_type
-    note: str | None
+    category_id: int
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 
-class MonthlyIncomeSummary(BaseModel):
+class MonthlyExpenseSummary(BaseModel):
     year: int
     month: int
     total_cents: int
-    fixed_cents: int
-    freelance_cents: int
+    essentials_cents: int
+    lifestyle_cents: int
     entry_count: int

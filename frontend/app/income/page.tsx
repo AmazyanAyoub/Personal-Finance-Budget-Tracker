@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createIncomeEntry,
@@ -51,6 +51,11 @@ function IncomeManager() {
     queryFn: () => getMonthlyIncomeSummary(token, year, month),
   });
 
+useEffect(() => {
+  setSource(allowedSources[0]);
+}, [onboarding?.income_mode]);
+
+  
   const allowedSources =
     onboarding?.income_mode === "fixed_only"
       ? ["fixed"]
@@ -128,12 +133,14 @@ function IncomeManager() {
       )}
 
       <form onSubmit={handleSubmit} className="flex w-96 flex-col gap-3">
-        {allowedSources.length > 1 && (
+        {allowedSources.length > 1 ? (
           <select value={source} onChange={(e) => setSource(e.target.value)} className="border rounded px-2 py-1">
             {allowedSources.map((s) => (
               <option key={s} value={s}>{SOURCE_LABEL[s]}</option>
             ))}
           </select>
+        ) : (
+          <p className="text-sm text-gray-500">Source: {SOURCE_LABEL[allowedSources[0]]}</p>
         )}
         <input type="number" step="0.01" placeholder="Amount (MAD)" value={amount}
           onChange={(e) => setAmount(e.target.value)} className="border rounded px-2 py-1" required />
