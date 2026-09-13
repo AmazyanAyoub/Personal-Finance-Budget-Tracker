@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBudgetEngineStatus, updateEfBalance } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { AuthGuard } from "../auth-guard";
+import { AuthGuard } from "../../auth-guard";
 
 function toCents(amount: number) {
   return Math.round(amount * 100);

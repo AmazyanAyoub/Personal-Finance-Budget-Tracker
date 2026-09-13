@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createExpense,
@@ -12,7 +12,7 @@ import {
   type Expense,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { AuthGuard } from "../auth-guard";
+import { AuthGuard } from "../../auth-guard";
 
 function toCents(amount: number) {
   return Math.round(amount * 100);
@@ -45,6 +45,10 @@ function ExpenseManager() {
     queryKey: ["expense-summary", year, month],
     queryFn: () => getMonthlyExpenseSummary(token, year, month),
   });
+
+  useEffect(() => {
+    setDate(`${year}-${String(month).padStart(2, "0")}-01`);
+  }, [year, month]);
 
   const categoryName = (id: number) => categories?.find((c) => c.id === id)?.name ?? id;
 

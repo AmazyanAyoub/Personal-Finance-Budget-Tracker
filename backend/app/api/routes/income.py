@@ -7,11 +7,68 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.enums import IncomeSource
-from app.models.income import IncomeEntry
+from app.models.income import IncomeEntry, IncomeModeConfig
 from app.models.user import User
-from app.schemas.income import IncomeEntryCreate, IncomeEntryOut, IncomeEntryUpdate, MonthlyIncomeSummary
+from app.schemas.income import (
+    FixedSalaryOut,
+    FixedSalaryUpdate,
+    IncomeEntryCreate,
+    IncomeEntryOut,
+    IncomeEntryUpdate,
+    MonthlyIncomeSummary,
+)
 
 router = APIRouter(prefix="/income-entries", tags=["income"])
+
+
+def _ensure_fixed_entry(db: Session, year: int, month: int) -> None:
+    """Auto-creates this month's fixed-salary entry the first time it's looked up, if one isn't set."""
+    today = date.today()
+    target = date(year, month, 1)
+    if target > today.replace(day=1):
+        return  # never auto-create for future months
+    mode_config = db.query(IncomeModeConfig).first()
+    if not mode_config or not mode_config.fixed_salary_cents:
+        return
+    exists = (
+        db.query(IncomeEntry)
+        .filter(IncomeEntry.source == IncomeSource.FIXED)
+        .filter(extract("year", IncomeEntry.date) == year)
+        .filter(extract("month", IncomeEntry.date) == month)
+        .first()
+    )
+    if exists:
+        return
+    db.add(IncomeEntry(
+        source=IncomeSource.FIXED,
+        amount_cents=mode_config.fixed_salary_cents,
+        date=target,
+        note="Auto-generated fixed salary",
+    ))
+    db.commit()
+
+
+@router.get("/fixed-salary", response_model=FixedSalaryOut)
+def get_fixed_salary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    mode_config = db.query(IncomeModeConfig).first()
+    return FixedSalaryOut(fixed_salary_cents=mode_config.fixed_salary_cents if mode_config else None)
+
+
+@router.patch("/fixed-salary", response_model=FixedSalaryOut)
+def set_fixed_salary(
+    payload: FixedSalaryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    mode_config = db.query(IncomeModeConfig).first()
+    if not mode_config:
+        raise HTTPException(status_code=400, detail="Complete onboarding first")
+    mode_config.fixed_salary_cents = payload.fixed_salary_cents
+    db.commit()
+    return FixedSalaryOut(fixed_salary_cents=mode_config.fixed_salary_cents)
 
 
 @router.post("", response_model=IncomeEntryOut)
@@ -34,6 +91,8 @@ def list_income_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if year is not None and month is not None:
+        _ensure_fixed_entry(db, year, month)
     query = db.query(IncomeEntry)
     if year is not None:
         query = query.filter(extract("year", IncomeEntry.date) == year)
@@ -42,7 +101,6 @@ def list_income_entries(
     return query.order_by(IncomeEntry.date.desc()).all()
 
 
-# must stay above /{entry_id} — otherwise "summary" gets matched as an entry_id
 @router.get("/summary", response_model=MonthlyIncomeSummary)
 def monthly_income_summary(
     year: int | None = Query(None),
@@ -53,6 +111,7 @@ def monthly_income_summary(
     today = date.today()
     year = year or today.year
     month = month or today.month
+    _ensure_fixed_entry(db, year, month)
 
     entries = (
         db.query(IncomeEntry)

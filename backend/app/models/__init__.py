@@ -5,6 +5,7 @@ from app.models.expense import Expense
 from app.models.income import IncomeEntry, IncomeModeConfig
 from app.models.user import User
 from app.models.debt import Debt, DebtPayment
+from app.models.investment import Investment, InvestmentType
 
 
 __all__ = [
@@ -18,4 +19,6 @@ __all__ = [
     "Category",
     "Expense",
     "FreedomFundsAllocation",
+    "Investment",
+    "InvestmentType",
 ]

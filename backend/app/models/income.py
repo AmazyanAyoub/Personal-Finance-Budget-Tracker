@@ -12,6 +12,7 @@ class IncomeModeConfig(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     mode: Mapped[IncomeMode] = mapped_column(Enum(IncomeMode, name="income_mode"), nullable=False)
+    fixed_salary_cents: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 

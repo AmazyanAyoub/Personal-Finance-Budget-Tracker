@@ -5,19 +5,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createIncomeEntry,
   deleteIncomeEntry,
+  getFixedSalary,
   getMonthlyIncomeSummary,
   getOnboardingStatus,
   listIncomeEntries,
+  setFixedSalary,
   updateIncomeEntry,
   type IncomeEntry,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { AuthGuard } from "../auth-guard";
+import { AuthGuard } from "../../auth-guard";
 
 function toCents(amount: number) {
   return Math.round(amount * 100);
 }
-
 function fromCents(cents: number) {
   return (cents / 100).toFixed(2);
 }
@@ -31,17 +32,16 @@ function IncomeManager() {
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const [source, setSource] = useState("fixed");
+  const [source, setSource] = useState("freelance");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today.toISOString().slice(0, 10));
   const [note, setNote] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [salaryInput, setSalaryInput] = useState("");
+  const [salaryError, setSalaryError] = useState<string | null>(null);
 
-  const { data: onboarding } = useQuery({
-    queryKey: ["onboarding-status"],
-    queryFn: () => getOnboardingStatus(token),
-  });
+  const { data: onboarding } = useQuery({ queryKey: ["onboarding-status"], queryFn: () => getOnboardingStatus(token) });
   const { data: entries } = useQuery({
     queryKey: ["income-entries", year, month],
     queryFn: () => listIncomeEntries(token, year, month),
@@ -51,23 +51,33 @@ function IncomeManager() {
     queryFn: () => getMonthlyIncomeSummary(token, year, month),
   });
 
-useEffect(() => {
-  setSource(allowedSources[0]);
-}, [onboarding?.income_mode]);
+  const hasFixedIncome =
+    onboarding?.income_mode === "fixed_only" || onboarding?.income_mode === "fixed_plus_freelance";
+  const { data: fixedSalary } = useQuery({
+    queryKey: ["fixed-salary"],
+    queryFn: () => getFixedSalary(token),
+    enabled: hasFixedIncome,
+  });
 
-  
-  const allowedSources =
-    onboarding?.income_mode === "fixed_only"
-      ? ["fixed"]
-      : onboarding?.income_mode === "freelance_only"
+  // fixed income is auto-generated now — only freelance can be logged manually
+  const allowedManualSources =
+    onboarding?.income_mode === "freelance_only" || onboarding?.income_mode === "fixed_plus_freelance"
       ? ["freelance"]
-      : ["fixed", "freelance"];
+      : [];
+
+  // date input follows whichever month you're viewing
+  useEffect(() => {
+    setDate(`${year}-${String(month).padStart(2, "0")}-01`);
+  }, [year, month]);
+
+  useEffect(() => {
+    if (allowedManualSources.length > 0) setSource(allowedManualSources[0]);
+  }, [onboarding?.income_mode]);
 
   function resetForm() {
     setEditingId(null);
-    setSource(allowedSources[0]);
     setAmount("");
-    setDate(today.toISOString().slice(0, 10));
+    setDate(`${year}-${String(month).padStart(2, "0")}-01`);
     setNote("");
   }
 
@@ -116,9 +126,45 @@ useEffect(() => {
     setYear(y);
   }
 
+  async function handleSaveSalary(e: React.FormEvent) {
+    e.preventDefault();
+    setSalaryError(null);
+    const cents = toCents(Number(salaryInput));
+    if (!cents || cents <= 0) {
+      setSalaryError("Enter a valid amount");
+      return;
+    }
+    try {
+      await setFixedSalary(token, cents);
+      setSalaryInput("");
+      queryClient.invalidateQueries({ queryKey: ["fixed-salary"] });
+      queryClient.invalidateQueries({ queryKey: ["income-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["income-summary"] });
+    } catch (err) {
+      setSalaryError(err instanceof Error ? err.message : "Something went wrong");
+    }
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 p-6">
       <h1 className="text-2xl font-bold">Income</h1>
+
+      {hasFixedIncome && (
+        <form onSubmit={handleSaveSalary} className="flex w-96 flex-col gap-2 border rounded p-4">
+          <label className="font-medium">Fixed monthly salary</label>
+          <p className="text-xs text-gray-500">
+            {fixedSalary?.fixed_salary_cents
+              ? `Currently ${fromCents(fixedSalary.fixed_salary_cents)} MAD — added automatically each month.`
+              : "Not set yet — nothing auto-added until you set this."}
+          </p>
+          <div className="flex gap-2">
+            <input type="number" step="0.01" placeholder="Salary (MAD)" value={salaryInput}
+              onChange={(e) => setSalaryInput(e.target.value)} className="border rounded px-2 py-1 flex-1" />
+            <button type="submit" className="bg-black text-white rounded px-3 py-1">Save</button>
+          </div>
+          {salaryError && <p className="text-red-500 text-sm">{salaryError}</p>}
+        </form>
+      )}
 
       <div className="flex items-center gap-4">
         <button onClick={() => changeMonth(-1)} className="border rounded px-2 py-1">←</button>
@@ -132,38 +178,30 @@ useEffect(() => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex w-96 flex-col gap-3">
-        {allowedSources.length > 1 ? (
-          <select value={source} onChange={(e) => setSource(e.target.value)} className="border rounded px-2 py-1">
-            {allowedSources.map((s) => (
-              <option key={s} value={s}>{SOURCE_LABEL[s]}</option>
-            ))}
-          </select>
-        ) : (
-          <p className="text-sm text-gray-500">Source: {SOURCE_LABEL[allowedSources[0]]}</p>
-        )}
-        <input type="number" step="0.01" placeholder="Amount (MAD)" value={amount}
-          onChange={(e) => setAmount(e.target.value)} className="border rounded px-2 py-1" required />
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          className="border rounded px-2 py-1" required />
-        <input type="text" placeholder="Note (optional)" value={note}
-          onChange={(e) => setNote(e.target.value)} className="border rounded px-2 py-1" />
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <div className="flex gap-2">
-          <button type="submit" className="bg-black text-white rounded px-3 py-2">
-            {editingId ? "Save changes" : "Add entry"}
-          </button>
-          {editingId && (
-            <button type="button" onClick={resetForm} className="border rounded px-3 py-2">Cancel</button>
-          )}
-        </div>
-      </form>
+      {allowedManualSources.length > 0 ? (
+        <form onSubmit={handleSubmit} className="flex w-96 flex-col gap-3">
+          <p className="text-sm text-gray-500">Source: {SOURCE_LABEL[allowedManualSources[0]]}</p>
+          <input type="number" step="0.01" placeholder="Amount (MAD)" value={amount}
+            onChange={(e) => setAmount(e.target.value)} className="border rounded px-2 py-1" required />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+            className="border rounded px-2 py-1" required />
+          <input type="text" placeholder="Note (optional)" value={note}
+            onChange={(e) => setNote(e.target.value)} className="border rounded px-2 py-1" />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div className="flex gap-2">
+            <button type="submit" className="bg-black text-white rounded px-3 py-2">
+              {editingId ? "Save changes" : "Add entry"}
+            </button>
+            {editingId && <button type="button" onClick={resetForm} className="border rounded px-3 py-2">Cancel</button>}
+          </div>
+        </form>
+      ) : (
+        <p className="text-sm text-gray-500">Your fixed salary is added automatically each month — nothing to log manually here.</p>
+      )}
 
       <table className="w-full max-w-lg text-sm">
         <thead>
-          <tr className="text-left border-b">
-            <th className="py-1">Date</th><th>Source</th><th>Amount</th><th>Note</th><th></th>
-          </tr>
+          <tr className="text-left border-b"><th className="py-1">Date</th><th>Source</th><th>Amount</th><th>Note</th><th></th></tr>
         </thead>
         <tbody>
           {entries?.map((entry) => (

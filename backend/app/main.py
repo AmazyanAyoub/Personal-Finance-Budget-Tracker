@@ -10,6 +10,8 @@ from app.api.routes.categories import router as categories_router
 from app.api.routes.expenses import router as expenses_router
 from app.api.routes.budget_engine import router as budget_engine_router
 from app.api.routes.debts import router as debts_router
+from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.investments import router as investments_router
 
 
 
@@ -25,6 +27,8 @@ app.include_router(categories_router)
 app.include_router(expenses_router)
 app.include_router(budget_engine_router)
 app.include_router(debts_router)
+app.include_router(dashboard_router)
+app.include_router(investments_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -50,6 +50,27 @@ export type BudgetEngineStatus = {
   recommended_debt_cents: number;
 };
 
+export type DashboardData = {
+  year: number;
+  month: number;
+  savings_cents: number;
+  ef_target_cents: number;
+  ef_current_balance_cents: number;
+  ef_progress_pct: number;
+  ef_is_met: boolean;
+  ef_projected_months_to_target: number | null;
+  lifestyle_budget_cents: number;
+  lifestyle_spent_cents: number;
+  lifestyle_remaining_cents: number;
+  investments_total_cents: number;
+  total_debt_remaining_cents: number;
+  debt_count: number;
+  spending_by_category: { category: string; amount_cents: number }[];
+  monthly_trend: { year: number; month: number; income_cents: number; expense_cents: number }[];
+  budget_comparison: { bucket: string; planned_pct: number; actual_pct: number; planned_cents: number; actual_cents: number }[];
+
+};
+
 
 export async function getHealth() {
   const res = await fetch(`${API_URL}/health`);
@@ -338,4 +359,72 @@ export async function listDebtPayments(token: string, debtId: number) {
   const res = await fetch(`${API_URL}/debts/${debtId}/payments`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error("Failed to load payments");
   return res.json() as Promise<DebtPayment[]>;
+}
+
+
+export async function getDashboard(token: string) {
+  const res = await fetch(`${API_URL}/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to load dashboard");
+  return res.json() as Promise<DashboardData>;
+}
+
+
+export async function getFixedSalary(token: string) {
+  const res = await fetch(`${API_URL}/income-entries/fixed-salary`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to load fixed salary");
+  return res.json() as Promise<{ fixed_salary_cents: number | null }>;
+}
+
+export async function setFixedSalary(token: string, fixed_salary_cents: number) {
+  const res = await fetch(`${API_URL}/income-entries/fixed-salary`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fixed_salary_cents }),
+  });
+  if (!res.ok) throw new Error("Failed to save fixed salary");
+  return res.json() as Promise<{ fixed_salary_cents: number | null }>;
+}
+
+
+export type InvestmentType = { id: number; name: string };
+export type Investment = { id: number; investment_type_id: number; amount_cents: number; date: string; note: string | null; created_at: string };
+export type InvestmentSummary = { total_invested_cents: number; by_type: { type: string; amount_cents: number }[] };
+
+export async function listInvestmentTypes(token: string) {
+  const res = await fetch(`${API_URL}/investments/types`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to load investment types");
+  return res.json() as Promise<InvestmentType[]>;
+}
+
+export async function listInvestments(token: string) {
+  const res = await fetch(`${API_URL}/investments`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to load investments");
+  return res.json() as Promise<Investment[]>;
+}
+
+export async function getInvestmentSummary(token: string) {
+  const res = await fetch(`${API_URL}/investments/summary`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to load investment summary");
+  return res.json() as Promise<InvestmentSummary>;
+}
+
+export async function createInvestment(
+  token: string,
+  data: { investment_type_id: number; amount_cents: number; date: string; note?: string }
+) {
+  const res = await fetch(`${API_URL}/investments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Failed to log investment");
+  }
+  return res.json() as Promise<Investment>;
+}
+
+export async function deleteInvestment(token: string, id: number) {
+  const res = await fetch(`${API_URL}/investments/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error("Failed to delete investment");
 }
