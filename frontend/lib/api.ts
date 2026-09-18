@@ -1,5 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export type Debt = {
   id: number;
   name: string;
@@ -125,7 +132,9 @@ export async function getOnboardingStatus(token: string) {
   const res = await fetch(`${API_URL}/onboarding/status`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Failed to load onboarding status");
+  if (!res.ok) {
+    throw new ApiError("Failed to load onboarding status", res.status);
+  }
   return res.json() as Promise<{
     is_onboarded: boolean;
     income_mode: string | null;

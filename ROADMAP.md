@@ -1,6 +1,6 @@
-# Personal Finance & Budget Tracker — Roadmap
+# Nisba — Personal Finance & Budget Tracker Roadmap
 
-Solo-use app. Built one phase at a time — each phase must be confirmed working before the next starts. This file tracks what each phase covers and current status.
+Current scope is a solo-use app. This file distinguishes features present in code from features verified end-to-end; a fresh-database walkthrough is still pending.
 
 **Stack:** FastAPI + PostgreSQL + SQLAlchemy + Alembic (backend, using `uv` for venv/deps) · Next.js (TS, App Router) + Tailwind + shadcn/ui + TanStack Query + Recharts (frontend) · simple JWT auth · money stored as integer cents · LLM-based expense auto-categorization (later phase).
 
@@ -18,29 +18,34 @@ Backend (FastAPI + Postgres connection + SQLAlchemy + Alembic wired up) and fron
 Models: `IncomeModeConfig`, `BudgetSplit` (versioned by `effective_date`), `EmergencyFundConfig` (multiplier), `Debt`, `Category`, `IncomeEntry`, `Expense` + migrations. Onboarding flow: pick income mode, set budget split % (must sum to 100), set EF multiplier (3–6).
 **Status: Done.** Full explanation: [docs/PHASE_2_DATA_MODELS.md](docs/PHASE_2_DATA_MODELS.md).
 
-### ⬜ Phase 3 — Income CRUD
-Log/edit/delete income entries (fixed and/or freelance, depending on chosen mode). Monthly aggregation = sum of entries falling in that calendar month.
-**Done when:** all 3 income modes produce correct monthly totals; full CRUD from the UI.
+### 🟡 Phase 3 — Income CRUD
+Income entry CRUD and monthly summaries are implemented. Fixed salary can be configured and an entry is generated when the current month is read; historical months are no longer auto-filled from today's salary.
+**Status: Implemented; end-to-end verification pending.** Current-month generation still happens during GET requests and lacks a database uniqueness guard, so concurrent reads can create duplicates.
 
-### ⬜ Phase 4 — Expense CRUD (manual only)
-Amount, note, date, manually-picked category. No AI yet. Filtering/listing by month.
-**Done when:** full CRUD works end-to-end; expenses filter correctly by date range/month.
+### 🟡 Phase 4 — Expense CRUD (manual only)
+Expense CRUD, manual category selection, and monthly filtering/summaries are implemented. No AI categorization yet.
+**Status: Implemented; fresh-database verification pending.**
 
-### ⬜ Phase 5 — Debt tracking
-Debt entity: balance, monthly payment, payoff target date. Payment logging + progress view.
-**Done when:** can create a debt, log payments, see accurate progress toward the target date.
+### 🟡 Phase 5 — Debt tracking
+Debt CRUD, payment logging/history, remaining-balance calculation, and progress view are implemented.
+**Status: Implemented; fresh-database verification pending.** Debt payments belong in Essentials, but the dashboard still counts them under Freedom Funds in its planned-vs-actual comparison.
 
-### ⬜ Phase 6 — Budget engine & Emergency Fund phase logic *(critical logic)*
-Server-side: EF target = Essentials × multiplier. Phase 1 (building) = 100% of Freedom Funds → EF. Phase 2 (unlocked) = Freedom Funds split Investments/Debt by a sub-ratio, once EF target is hit. Persisted allocation history so past months don't recompute differently later.
-**Done when:** engine correctly reports phase, EF target/progress, and allocation split — including correctly flipping from Phase 1 to Phase 2 at the target boundary. Covered by unit tests on that transition.
+### 🟡 Phase 6 — Budget engine & Emergency Fund phase logic *(critical logic)*
+The EF target is calculated from the onboarding income estimate and Essentials percentage, then stored. Below the target, the engine recommends 100% of Freedom Funds to the EF; at or above the target, it recommends 100% to investments. Debt is not recommended from Freedom Funds. Three unit tests cover one cent below, exactly at, and above the target.
+**Status: Core recommendation implemented and unit-tested; integration and historical behavior pending.** The old Investments/Debt allocation model and endpoints still exist but are no longer used by the recommendation. Persisted monthly allocation history has not been implemented.
 
-### ⬜ Phase 7 — Dashboard
-Savings, EF progress, this month's spendable (Lifestyle remaining), Investments (placeholder), Debt progress — clearly separated, no double-counting. Charts via Recharts.
-**Done when:** dashboard numbers match a manual hand-calculation for a test month.
+### 🟡 Phase 7 — Dashboard and investments
+The dashboard shows EF progress, Lifestyle remaining, investment totals, debt remaining, spending by category, a six-month income/expense chart, and planned-vs-actual budget bars. An investment ledger and per-type summary are implemented.
+**Status: Implemented; manual calculation against a test month and fresh-database verification pending.** The dashboard's debt-payment bucket needs correction before its comparison can be trusted.
 
 ### ⬜ Phase 8 — AI categorization
 LLM call (note text → suggested category) on expense creation, with accept/override and graceful fallback on API failure.
 **Done when:** new expenses get a suggestion at acceptable latency; overrides persist; API failure doesn't block expense creation.
+
+### Current stabilization work
+- Protected app layout redirects to login when onboarding-status returns 401 and shows a retry state for other failures. Other API calls still need consistent expired-token and loading/error handling.
+- Docker Compose and Dockerfiles exist; first-run user/category/investment-type setup and a fresh-database walkthrough are not yet verified.
+- Next priorities: correct debt payments in dashboard Essentials, prevent current-month fixed-salary duplicates, verify the full flow on a disposable database, and finish frontend loading/error handling.
 
 ---
 
@@ -51,4 +56,4 @@ LLM call (note text → suggested category) on expense creation, with accept/ove
 
 ### Working agreement
 - One phase at a time — wait for explicit confirmation before starting the next.
-- Claude never runs commands or writes/edits project files directly — always hands over commands + file contents for manual execution, unless explicitly told otherwise for a specific file (e.g. this doc).
+- The assistant provides code and commands for manual execution unless explicitly authorized to make a particular change.

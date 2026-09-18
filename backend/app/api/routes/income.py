@@ -25,8 +25,8 @@ def _ensure_fixed_entry(db: Session, year: int, month: int) -> None:
     """Auto-creates this month's fixed-salary entry the first time it's looked up, if one isn't set."""
     today = date.today()
     target = date(year, month, 1)
-    if target > today.replace(day=1):
-        return  # never auto-create for future months
+    if target != today.replace(day=1):
+        return
     mode_config = db.query(IncomeModeConfig).first()
     if not mode_config or not mode_config.fixed_salary_cents:
         return

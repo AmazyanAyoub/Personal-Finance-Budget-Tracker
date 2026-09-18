@@ -32,7 +32,7 @@ def _current_split(db: Session) -> BudgetSplit | None:
 def _ensure_fixed_entry(db: Session, year: int, month: int) -> None:
     today = date.today()
     target = date(year, month, 1)
-    if target > today.replace(day=1):
+    if target != today.replace(day=1):
         return
     mode_config = db.query(IncomeModeConfig).first()
     if not mode_config or not mode_config.fixed_salary_cents:

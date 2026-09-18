@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getOnboardingStatus } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { ApiError, getOnboardingStatus } from "@/lib/api";
+import { clearToken, getToken } from "@/lib/auth";
 import { AuthGuard } from "../auth-guard";
 import { Sidebar } from "../sidebar";
 
@@ -12,20 +12,46 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const token = getToken();
 
-  const { data: onboarding, isLoading } = useQuery({
+  const {
+    data: onboarding,
+    error,
+    isPending,
+    refetch,
+  } = useQuery({
     queryKey: ["onboarding-status"],
     queryFn: () => getOnboardingStatus(token!),
     enabled: !!token,
+    retry: false,
   });
 
+  const sessionExpired = error instanceof ApiError && error.status === 401;
+
   useEffect(() => {
-    if (onboarding && !onboarding.is_onboarded) {
+    if (sessionExpired) {
+      clearToken();
+      router.replace("/login");
+    } else if (onboarding && !onboarding.is_onboarded) {
       router.replace("/onboarding");
     }
-  }, [onboarding, router]);
+  }, [sessionExpired, onboarding, router]);
 
-  if (isLoading || (onboarding && !onboarding.is_onboarded)) {
-    return null;
+  if (sessionExpired) {
+    return <p className="p-6">Session expired. Redirecting to login...</p>;
+  }
+
+  if (isPending || (onboarding && !onboarding.is_onboarded)) {
+    return <p className="p-6">Loading your account...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6" role="alert">
+        <p>Could not load your account. Check that the backend is running.</p>
+        <button type="button" onClick={() => refetch()} className="underline">
+          Try again
+        </button>
+      </div>
+    );
   }
 
   return (
