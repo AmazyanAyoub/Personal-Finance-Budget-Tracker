@@ -54,7 +54,6 @@ export type BudgetEngineStatus = {
   projected_months_to_target: number | null;
   recommended_ef_cents: number;
   recommended_investments_cents: number;
-  recommended_debt_cents: number;
 };
 
 export type DashboardData = {
@@ -72,10 +71,13 @@ export type DashboardData = {
   investments_total_cents: number;
   total_debt_remaining_cents: number;
   debt_count: number;
-  spending_by_category: { category: string; amount_cents: number }[];
   monthly_trend: { year: number; month: number; income_cents: number; expense_cents: number }[];
   budget_comparison: { bucket: string; planned_pct: number; actual_pct: number; planned_cents: number; actual_cents: number }[];
-
+  spending_by_category: {
+    category: string;
+    bucket: "essentials" | "lifestyle";
+    amount_cents: number;
+  }[];
 };
 
 
@@ -114,6 +116,7 @@ export async function submitOnboarding(
     lifestyle_pct: number;
     ef_multiplier: number;
     estimated_monthly_income_cents: number;
+    fixed_salary_cents: number | null;
   }
 ) {
   const res = await fetch(`${API_URL}/onboarding`, {
@@ -299,30 +302,6 @@ export async function updateEfBalance(token: string, current_balance_cents: numb
   });
   if (!res.ok) throw new Error("Failed to update EF balance");
   return res.json() as Promise<BudgetEngineStatus>;
-}
-
-export type FreedomFundsAllocation = { investments_pct: number; debt_pct: number };
-
-export async function getFreedomFundsAllocation(token: string) {
-  const res = await fetch(`${API_URL}/budget-engine/freedom-funds-allocation`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error("Failed to load allocation");
-  return res.json() as Promise<FreedomFundsAllocation>;
-}
-
-export async function setFreedomFundsAllocation(token: string, data: FreedomFundsAllocation) {
-  const res = await fetch(`${API_URL}/budget-engine/freedom-funds-allocation`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Failed to save allocation");
-  }
-  return res.json() as Promise<FreedomFundsAllocation>;
 }
 
 export type DebtPayment = { id: number; debt_id: number; amount_cents: number; date: string; note: string | null; created_at: string };

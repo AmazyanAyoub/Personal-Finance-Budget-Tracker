@@ -10,6 +10,7 @@ from app.models.income import IncomeModeConfig
 from app.models.user import User
 from app.schemas.budget import BudgetSplitOut
 from app.schemas.onboarding import OnboardingRequest, OnboardingStatus
+from app.models.enums import IncomeMode
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -26,6 +27,11 @@ def submit_onboarding(
     else:
         mode_config = IncomeModeConfig(mode=payload.income_mode)
         db.add(mode_config)
+        
+    if payload.income_mode == IncomeMode.FREELANCE_ONLY:
+        mode_config.fixed_salary_cents = None
+    else:
+        mode_config.fixed_salary_cents = payload.fixed_salary_cents
 
     # EF target computed ONCE here, from the one-time estimate — never recomputed automatically elsewhere
     essentials_once = payload.estimated_monthly_income_cents * payload.essentials_pct // 100

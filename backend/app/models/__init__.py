@@ -1,11 +1,10 @@
-from app.models.budget import BudgetSplit, EmergencyFundConfig, FreedomFundsAllocation
+from app.models.budget import BudgetSplit, EmergencyFundConfig
 from app.models.category import Category
-from app.models.debt import Debt
+from app.models.debt import Debt, DebtPayment
 from app.models.expense import Expense
 from app.models.income import IncomeEntry, IncomeModeConfig
-from app.models.user import User
-from app.models.debt import Debt, DebtPayment
 from app.models.investment import Investment, InvestmentType
+from app.models.user import User
 
 
 __all__ = [
@@ -18,7 +17,6 @@ __all__ = [
     "DebtPayment",
     "Category",
     "Expense",
-    "FreedomFundsAllocation",
     "Investment",
     "InvestmentType",
 ]

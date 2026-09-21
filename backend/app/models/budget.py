@@ -36,14 +36,3 @@ class EmergencyFundConfig(Base):
     # the only field you update yourself, whenever you check your real balance
     current_balance_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-
-class FreedomFundsAllocation(Base):
-    __tablename__ = "freedom_funds_allocation"
-    __table_args__ = (
-        CheckConstraint("investments_pct + debt_pct = 100", name="ff_allocation_sums_to_100"),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    investments_pct: Mapped[int] = mapped_column(Integer, nullable=False)
-    debt_pct: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

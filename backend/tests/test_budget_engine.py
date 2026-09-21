@@ -17,7 +17,6 @@ class BudgetEngineTests(unittest.TestCase):
         self.assertEqual(result.ef_gap_cents, 1)
         self.assertEqual(result.recommended_ef_cents, self.freedom_funds)
         self.assertEqual(result.recommended_investments_cents, 0)
-        self.assertEqual(result.recommended_debt_cents, 0)
 
     def test_exactly_at_target(self):
         result = calculate_budget_recommendation(
@@ -28,7 +27,6 @@ class BudgetEngineTests(unittest.TestCase):
         self.assertEqual(result.ef_gap_cents, 0)
         self.assertEqual(result.recommended_ef_cents, 0)
         self.assertEqual(result.recommended_investments_cents, self.freedom_funds)
-        self.assertEqual(result.recommended_debt_cents, 0)
 
     def test_above_target(self):
         result = calculate_budget_recommendation(
@@ -39,8 +37,6 @@ class BudgetEngineTests(unittest.TestCase):
         self.assertEqual(result.ef_gap_cents, 0)
         self.assertEqual(result.recommended_ef_cents, 0)
         self.assertEqual(result.recommended_investments_cents, self.freedom_funds)
-        self.assertEqual(result.recommended_debt_cents, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

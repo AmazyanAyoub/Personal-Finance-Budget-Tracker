@@ -1,21 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 
+function subscribe() {
+  return () => {};
+}
+
+function getClientSnapshot() {
+  return true;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const isClient = useSyncExternalStore(
+    subscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  );
+
+  const token = isClient ? getToken() : null;
 
   useEffect(() => {
-    if (!getToken()) {
+    if (isClient && !token) {
       router.replace("/login");
-    } else {
-      setChecked(true);
     }
-  }, [router]);
+  }, [isClient, token, router]);
 
-  if (!checked) return null;
+  if (!isClient || !token) {
+    return null;
+  }
+
   return <>{children}</>;
 }

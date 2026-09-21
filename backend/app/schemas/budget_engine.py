@@ -1,36 +1,15 @@
 from pydantic import BaseModel, field_validator
 
 
-class FreedomFundsAllocationCreate(BaseModel):
-    investments_pct: int
-    debt_pct: int
-
-    @field_validator("debt_pct")
-    @classmethod
-    def validate_sums_to_100(cls, v, info):
-        total = info.data.get("investments_pct", 0) + v
-        if total != 100:
-            raise ValueError("investments_pct + debt_pct must sum to 100")
-        return v
-
-
-class FreedomFundsAllocationOut(BaseModel):
-    investments_pct: int
-    debt_pct: int
-
-    class Config:
-        from_attributes = True
-
-
 class EFBalanceUpdate(BaseModel):
     current_balance_cents: int
 
     @field_validator("current_balance_cents")
     @classmethod
-    def validate_non_negative(cls, v):
-        if v < 0:
+    def validate_non_negative(cls, value):
+        if value < 0:
             raise ValueError("current_balance_cents cannot be negative")
-        return v
+        return value
 
 
 class BudgetEngineStatus(BaseModel):
@@ -47,4 +26,3 @@ class BudgetEngineStatus(BaseModel):
     projected_months_to_target: float | None
     recommended_ef_cents: int
     recommended_investments_cents: int
-    recommended_debt_cents: int

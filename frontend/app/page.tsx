@@ -3,283 +3,464 @@
 import { useState } from "react";
 import Link from "next/link";
 
-function formatMAD(n: number) {
-  return Math.round(n).toLocaleString("en-US") + " MAD";
+function formatMAD(amount: number) {
+  return `${Math.round(amount).toLocaleString("en-US")} MAD`;
 }
 
-function LogoMark({ className = "w-6 h-6" }: { className?: string }) {
+function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className}>
-      <g transform="rotate(-90 12 12)">
-        <circle cx="12" cy="12" r="9" fill="none" className="stroke-border" strokeWidth="3.4" />
-        <circle cx="12" cy="12" r="9" fill="none" className="stroke-brand" strokeWidth="3.4" strokeDasharray="16.96 39.55" strokeLinecap="round" />
-        <circle cx="12" cy="12" r="9" fill="none" className="stroke-brand-mid" strokeWidth="3.4" strokeDasharray="31.10 25.41" strokeDashoffset="-16.96" strokeLinecap="round" />
-        <circle cx="12" cy="12" r="9" fill="none" className="stroke-gold" strokeWidth="3.4" strokeDasharray="8.48 48.03" strokeDashoffset="-48.06" strokeLinecap="round" />
-      </g>
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <circle cx="24" cy="24" r="20" fill="none" stroke="#E6E1D6" strokeWidth="6" />
+      <path
+        d="M24 4a20 20 0 0 1 19 14"
+        fill="none"
+        stroke="#232C5C"
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M44 24a20 20 0 0 1-27 19"
+        fill="none"
+        stroke="#8891C4"
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 37A20 20 0 0 1 5 20"
+        fill="none"
+        stroke="#B8863A"
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 export default function LandingPage() {
   const [income, setIncome] = useState(10000);
-  const [cushionState, setCushionState] = useState<"building" | "complete">("building");
+  const [fundComplete, setFundComplete] = useState(false);
 
-  const freedom = income * 0.3;
+  const freedomFunds = income * 0.3;
   const essentials = income * 0.55;
   const lifestyle = income * 0.15;
 
   return (
-    <div className="flex flex-col">
-      {/* ================= NAV ================= */}
-      <header className="w-full border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-30">
-        <nav className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
+    <main className="min-h-screen bg-background text-foreground">
+      {/* Navigation */}
+      <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
+        <nav className="mx-auto flex h-18 max-w-6xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-3" aria-label="Nisba home">
             <LogoMark />
-            <span className="font-serif text-xl font-medium tracking-tight">Nisba</span>
+            <span className="font-serif text-2xl tracking-tight">Nisba</span>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-[15px] text-muted-foreground">
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
-            <a href="#emergency-fund" className="hover:text-foreground transition-colors">Emergency fund</a>
-            <a href="#dashboard-preview" className="hover:text-foreground transition-colors">Dashboard</a>
+
+          <div className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+            <a href="#how-it-works" className="transition-colors hover:text-foreground">
+              How it works
+            </a>
+            <a href="#emergency-fund" className="transition-colors hover:text-foreground">
+              Emergency fund
+            </a>
+            <a href="#dashboard-preview" className="transition-colors hover:text-foreground">
+              Dashboard
+            </a>
           </div>
-          <div className="flex items-center gap-5">
-            <Link href="/login" className="text-[15px] text-muted-foreground hover:text-foreground transition-colors">Log in</Link>
-            <Link href="/register" className="text-[15px] bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-[10px] transition-colors">Create account</Link>
-          </div>
+
+          <Link
+            href="/login"
+            className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+          >
+            Log in
+          </Link>
         </nav>
       </header>
 
-      {/* ================= HERO ================= */}
-      <section className="relative w-full hero-mesh overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6 py-24 md:py-32 flex flex-col lg:flex-row items-center gap-16 relative z-10">
-          <div className="flex flex-col gap-7 flex-1 max-w-xl">
-            <h1 className="rise-in rise-in-1 font-serif text-5xl md:text-6xl leading-[1.08] tracking-tight">Give every dirham a job.</h1>
-            <p className="rise-in rise-in-2 text-lg text-muted-foreground leading-relaxed max-w-md">
-              Set three percentages once. Nisba splits every dirham the moment it lands, builds your safety cushion first, then starts moving itself into investing and debt.
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        <div
+          className="pointer-events-none absolute -right-32 -top-52 h-[650px] w-[650px] rounded-full border border-brand/10"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -right-12 -top-28 h-[490px] w-[490px] rounded-full border border-brand/10"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute right-16 top-2 h-[330px] w-[330px] rounded-full border border-brand/10"
+          aria-hidden="true"
+        />
+
+        <div className="relative mx-auto grid max-w-6xl gap-16 px-6 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-28">
+          <div className="max-w-xl">
+            <span className="mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs tracking-wide text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+              A clearer view of your money
+            </span>
+
+            <h1 className="font-serif text-5xl leading-[1.08] tracking-tight sm:text-6xl">
+              Give every dirham <span className="italic text-brand">a job.</span>
+            </h1>
+
+            <p className="mt-7 max-w-lg text-lg leading-relaxed text-muted-foreground">
+              Build a plan for your income, follow your spending, and see what
+              your money can do next. Nisba gives you the picture. You make
+              the decisions.
             </p>
-            <div className="rise-in rise-in-3 flex items-center gap-5">
-              <Link href="/register" className="bg-brand hover:bg-brand-hover text-white px-6 py-3.5 rounded-[10px] text-[15px] transition-colors">Create account</Link>
-              <Link href="/login" className="text-[15px] text-muted-foreground hover:text-foreground transition-colors">Log in</Link>
+
+            <div className="mt-9 flex flex-wrap items-center gap-5">
+              <Link
+                href="/login"
+                className="rounded-[10px] bg-brand px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
+              >
+                Log in to Nisba
+              </Link>
+              <a
+                href="#how-it-works"
+                className="text-sm font-medium text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
+              >
+                See how it works
+              </a>
             </div>
-            <p className="rise-in rise-in-4 text-sm text-muted-foreground flex items-center gap-2">
-              <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 stroke-muted-foreground" fill="none">
-                <path d="M8 1.5l5.5 2.2v3.6c0 3.6-2.35 6.7-5.5 7.7-3.15-1-5.5-4.1-5.5-7.7V3.7L8 1.5z" strokeWidth="1.2" strokeLinejoin="round" />
-              </svg>
-              Free to start. No bank connection required.
+
+            <p className="mt-8 text-sm text-muted-foreground">
+              Private preview · No bank connection required
             </p>
           </div>
 
-          <div className="rise-in rise-in-5 border border-border rounded-[10px] bg-surface p-7 flex flex-col gap-6 w-full max-w-sm shadow-[0_1px_2px_rgba(28,27,24,0.04),0_8px_24px_-8px_rgba(28,27,24,0.08)]">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="income-input" className="text-sm text-muted-foreground">Monthly income (MAD)</label>
-              <input
-                id="income-input"
-                type="number"
-                min={0}
-                value={income}
-                onChange={(e) => setIncome(Number(e.target.value) || 0)}
-                className="border border-border rounded-[10px] px-4 py-3 font-mono tabular-nums text-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-              />
-            </div>
+          {/* Interactive example */}
+          <div className="relative">
+            <div className="absolute -left-5 -top-5 h-full w-full rounded-[24px] border border-gold/30 bg-gold-tint/40" />
 
-            <div className="flex items-center justify-center py-2">
-              <div className="relative w-40 h-40">
-                <svg viewBox="0 0 200 200" className="w-40 h-40">
-                  <g transform="rotate(-90 100 100)">
-                    <circle cx="100" cy="100" r="80" fill="none" className="stroke-border" strokeWidth="22" />
-                    <circle cx="100" cy="100" r="80" fill="none" className="stroke-brand" strokeWidth="22" strokeDasharray="150.80 351.86" strokeLinecap="round" />
-                    <circle cx="100" cy="100" r="80" fill="none" className="stroke-brand-mid" strokeWidth="22" strokeDasharray="276.46 226.19" strokeDashoffset="-150.80" strokeLinecap="round" />
-                    <circle cx="100" cy="100" r="80" fill="none" className="stroke-gold" strokeWidth="22" strokeDasharray="75.40 427.26" strokeDashoffset="-427.26" strokeLinecap="round" />
-                  </g>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xs text-muted-foreground">split into</span>
-                  <span className="font-serif text-2xl">3</span>
+            <div className="relative rounded-[24px] border border-border bg-surface p-6 shadow-[0_20px_60px_-25px_rgba(35,44,92,0.25)] sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+                    Try the plan
+                  </p>
+                  <h2 className="mt-2 font-serif text-2xl">A place for every dirham</h2>
+                </div>
+                <span className="rounded-full bg-brand-tint px-3 py-1 text-xs text-brand">
+                  Example
+                </span>
+              </div>
+
+              <label
+                htmlFor="income-input"
+                className="mt-8 block text-sm text-muted-foreground"
+              >
+                Monthly income
+              </label>
+              <div className="mt-2 flex items-center rounded-[10px] border border-border bg-background px-4 focus-within:border-brand">
+                <input
+                  id="income-input"
+                  type="number"
+                  min="0"
+                  value={income}
+                  onChange={(event) =>
+                    setIncome(Math.max(0, Number(event.target.value) || 0))
+                  }
+                  className="min-w-0 flex-1 bg-transparent py-3 font-mono text-xl outline-none"
+                />
+                <span className="text-sm text-muted-foreground">MAD</span>
+              </div>
+
+              <div className="mt-8 flex items-center gap-6">
+                <div
+                  className="relative h-32 w-32 shrink-0 rounded-full"
+                  style={{
+                    background:
+                      "conic-gradient(#232C5C 0% 30%, #8891C4 30% 85%, #B8863A 85% 100%)",
+                  }}
+                  aria-hidden="true"
+                >
+                  <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-surface">
+                    <span className="font-serif text-2xl">3</span>
+                    <span className="text-xs text-muted-foreground">buckets</span>
+                  </div>
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-4 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-brand" />
+                      Freedom Funds
+                    </span>
+                    <span className="font-mono tabular-nums">
+                      {formatMAD(freedomFunds)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-brand-mid" />
+                      Essentials
+                    </span>
+                    <span className="font-mono tabular-nums">
+                      {formatMAD(essentials)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-gold" />
+                      Lifestyle
+                    </span>
+                    <span className="font-mono tabular-nums">
+                      {formatMAD(lifestyle)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-3 font-mono tabular-nums text-[15px]">
-              <div className="flex justify-between items-center">
-                <span className="font-sans flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-brand shrink-0" />Freedom Funds</span>
-                <span>{formatMAD(freedom)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-sans flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-brand-mid shrink-0" />Essentials</span>
-                <span>{formatMAD(essentials)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-sans flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-gold shrink-0" />Lifestyle</span>
-                <span>{formatMAD(lifestyle)}</span>
-              </div>
+              <p className="mt-8 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
+                This is an illustrative 30/55/15 split. You can choose your own
+                percentages during setup. No money is moved automatically.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">Example split (30/55/15). Yours is fully custom at signup.</p>
           </div>
         </div>
       </section>
 
-      {/* ================= WHERE YOUR DIRHAM GOES ================= */}
-      <section id="how-it-works" className="relative w-full bg-surface-alt ring-watermark">
-        <div className="max-w-6xl mx-auto px-6 py-24 flex flex-col gap-12 relative">
-          <div className="flex flex-col gap-4 max-w-2xl">
-            <h2 className="font-serif text-3xl md:text-4xl tracking-tight">One split, three jobs.</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">Every dirham gets sorted the instant it arrives. No monthly math, no spreadsheet, no decision to make twice.</p>
+      {/* Three buckets */}
+      <section id="how-it-works" className="bg-surface-alt">
+        <div className="mx-auto max-w-6xl px-6 py-24">
+          <div className="max-w-2xl">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+              The idea
+            </p>
+            <h2 className="mt-4 font-serif text-4xl tracking-tight">
+              One plan. Three clear purposes.
+            </h2>
+            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+              Log your income and spending. Nisba compares them with your plan
+              so you can see what needs attention.
+            </p>
           </div>
 
-          <div className="flex w-full h-3 rounded-full overflow-hidden">
-            <div className="bg-brand" style={{ width: "30%" }} />
-            <div className="bg-brand-mid" style={{ width: "55%" }} />
-            <div className="bg-gold" style={{ width: "15%" }} />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="border border-border rounded-[10px] bg-surface p-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-brand" />
-                <span className="font-medium text-lg">Freedom Funds</span>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            <div className="rounded-[18px] border border-border bg-surface p-7">
+              <div className="mb-8 flex items-center justify-between">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-tint font-serif text-lg text-brand">
+                  01
+                </span>
+                <span className="h-2.5 w-2.5 rounded-full bg-brand" />
               </div>
-              <span className="text-sm text-muted-foreground font-mono tabular-nums">20-40%</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Investing and debt repayment, once your safety cushion is covered.</p>
-            </div>
-            <div className="border border-border rounded-[10px] bg-surface p-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-brand-mid" />
-                <span className="font-medium text-lg">Essentials</span>
-              </div>
-              <span className="text-sm text-muted-foreground font-mono tabular-nums">50-60%</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Rent, groceries, bills. The costs that don't move.</p>
-            </div>
-            <div className="border border-border rounded-[10px] bg-surface p-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gold" />
-                <span className="font-medium text-lg">Lifestyle</span>
-              </div>
-              <span className="text-sm text-muted-foreground font-mono tabular-nums">10-20%</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Yours to spend freely, tracked automatically.</p>
-            </div>
-          </div>
-
-          <div id="emergency-fund" className="flex items-center gap-3 pt-4">
-            <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 stroke-brand" fill="none">
-              <path d="M8 2v10.5M8 12.5l-4-4M8 12.5l4-4" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-[15px] text-muted-foreground">Freedom Funds has a first job before any of that:</span>
-          </div>
-
-          <div className="border border-border rounded-[10px] bg-surface p-8 md:p-9 flex flex-col gap-7">
-            <div className="flex flex-col gap-3">
-              <h3 className="font-serif text-2xl">Your safety cushion, funded first.</h3>
-              <p className="text-[15px] text-muted-foreground leading-relaxed max-w-2xl">
-                Before any investing or debt repayment happens, Freedom Funds builds a 3-6 month Essentials cushion. The target is set once at the start and never quietly recalculated. Once it's hit, the same money starts moving into investments and debt automatically.
+              <h3 className="font-serif text-2xl">Freedom Funds</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                First, build your emergency fund. Once it reaches its target,
+                Nisba recommends putting this part of your plan toward investing.
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCushionState("building")}
-                className={`px-5 py-2.5 rounded-[10px] text-[15px] border transition-colors ${
-                  cushionState === "building" ? "bg-brand text-white border-brand" : "border-border text-muted-foreground"
-                }`}
-              >
-                Building the cushion
-              </button>
-              <button
-                onClick={() => setCushionState("complete")}
-                className={`px-5 py-2.5 rounded-[10px] text-[15px] border transition-colors ${
-                  cushionState === "complete" ? "bg-brand text-white border-brand" : "border-border text-muted-foreground"
-                }`}
-              >
-                Cushion complete
-              </button>
+            <div className="rounded-[18px] border border-border bg-surface p-7">
+              <div className="mb-8 flex items-center justify-between">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-tint font-serif text-lg text-brand">
+                  02
+                </span>
+                <span className="h-2.5 w-2.5 rounded-full bg-brand-mid" />
+              </div>
+              <h3 className="font-serif text-2xl">Essentials</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                The commitments you need to cover: housing, groceries, bills,
+                transport, and debt payments.
+              </p>
             </div>
 
-            <div className="border border-border rounded-[10px] bg-surface-alt p-7">
-              {cushionState === "building" ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                  <div className="flex-1 w-full h-3 bg-border rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-brand" style={{ width: "45%" }} />
-                  </div>
-                  <span className="text-muted-foreground text-lg hidden sm:block">→</span>
-                  <div className="border border-border rounded-[10px] px-5 py-2.5 text-[15px] whitespace-nowrap bg-brand-tint text-brand">
-                    Emergency fund, 45%
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                  <div className="border border-border rounded-[10px] px-5 py-2.5 text-[15px] whitespace-nowrap bg-success-tint text-success">
-                    Emergency fund, funded
-                  </div>
-                  <span className="text-muted-foreground text-lg hidden sm:block">→</span>
-                  <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
-                    <div className="border border-border rounded-[10px] px-5 py-2.5 text-[15px] bg-surface">Investments</div>
-                    <div className="border border-border rounded-[10px] px-5 py-2.5 text-[15px] bg-surface">Debt</div>
-                  </div>
-                </div>
-              )}
+            <div className="rounded-[18px] border border-border bg-surface p-7">
+              <div className="mb-8 flex items-center justify-between">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold-tint font-serif text-lg text-gold">
+                  03
+                </span>
+                <span className="h-2.5 w-2.5 rounded-full bg-gold" />
+              </div>
+              <h3 className="font-serif text-2xl">Lifestyle</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                The things you enjoy. Give them space in the plan, then keep
+                track of what you actually spend.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= DASHBOARD PREVIEW ================= */}
-      <section id="dashboard-preview" className="w-full">
-        <div className="max-w-6xl mx-auto px-6 py-24 flex flex-col gap-10">
-          <div className="flex flex-col gap-4 max-w-2xl">
-            <h2 className="font-serif text-3xl md:text-4xl tracking-tight">One dashboard, five numbers that matter.</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">Savings, emergency fund progress, what's left to spend, what's invested, what's owed. One glance, not five apps.</p>
+      {/* Emergency fund */}
+      <section id="emergency-fund" className="border-y border-border bg-surface">
+        <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 lg:grid-cols-2 lg:items-center">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+              The safety cushion
+            </p>
+            <h2 className="mt-4 font-serif text-4xl tracking-tight">
+              Know what comes next.
+            </h2>
+            <p className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground">
+              Nisba compares your emergency fund with its target. Below the
+              target, it recommends prioritising the fund. When the target is
+              met, the recommendation shifts to investing.
+            </p>
+            <p className="mt-5 max-w-lg text-sm leading-relaxed text-muted-foreground">
+              These are recommendations, not restrictions or automatic
+              transfers. Debt payments remain part of Essentials.
+            </p>
           </div>
 
-          <div className="border border-border rounded-[10px] bg-surface p-8 shadow-[0_1px_2px_rgba(28,27,24,0.04),0_8px_24px_-8px_rgba(28,27,24,0.08)] flex flex-col gap-10">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-muted-foreground">Savings</span>
-                <span className="font-mono tabular-nums font-medium text-lg">8,400 MAD</span>
+          <div className="rounded-[20px] border border-border bg-background p-6 sm:p-8">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={!fundComplete}
+                onClick={() => setFundComplete(false)}
+                className={`rounded-[10px] px-4 py-2 text-sm transition-colors ${
+                  !fundComplete
+                    ? "bg-brand text-white"
+                    : "border border-border bg-surface text-muted-foreground"
+                }`}
+              >
+                Building the fund
+              </button>
+              <button
+                type="button"
+                aria-pressed={fundComplete}
+                onClick={() => setFundComplete(true)}
+                className={`rounded-[10px] px-4 py-2 text-sm transition-colors ${
+                  fundComplete
+                    ? "bg-brand text-white"
+                    : "border border-border bg-surface text-muted-foreground"
+                }`}
+              >
+                Target met
+              </button>
+            </div>
+
+            <div className="mt-8 rounded-[16px] border border-border bg-surface p-6">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Emergency fund
+                </span>
+                <span className="font-mono text-sm text-brand">
+                  {fundComplete ? "100%" : "45%"}
+                </span>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-muted-foreground">Emergency fund</span>
-                <span className="font-mono tabular-nums font-medium text-lg">56%</span>
+
+              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-brand transition-all"
+                  style={{ width: fundComplete ? "100%" : "45%" }}
+                />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-muted-foreground">Available this month</span>
-                <span className="font-mono tabular-nums font-medium text-lg">2,150 MAD</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-muted-foreground">Investments</span>
-                <span className="font-mono tabular-nums font-medium text-lg">3,200 MAD</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-muted-foreground">Debt</span>
-                <span className="font-mono tabular-nums font-medium text-lg">4,000 MAD</span>
+
+              <div className="mt-7 border-t border-border pt-6">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Nisba recommends
+                </p>
+                <p className="mt-2 font-serif text-xl text-brand">
+                  {fundComplete
+                    ? "Consider investing your Freedom Funds."
+                    : "Keep building your emergency fund."}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-              <div className="flex flex-col gap-4">
-                <span className="text-[15px] text-muted-foreground">Spending by category</span>
-                {[
-                  { name: "Groceries", pct: 80 },
-                  { name: "Rent", pct: 100 },
-                  { name: "Dining out", pct: 45 },
-                  { name: "Transport", pct: 30 },
-                ].map((c) => (
-                  <div key={c.name} className="flex items-center gap-3">
-                    <span className="w-24 text-[15px] shrink-0">{c.name}</span>
-                    <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-brand-mid" style={{ width: `${c.pct}%` }} />
+            <p className="mt-4 text-xs text-muted-foreground">
+              Illustration only — you choose what to do with your money.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Dashboard preview */}
+      <section id="dashboard-preview" className="bg-surface-alt">
+        <div className="mx-auto max-w-6xl px-6 py-24">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+                The bigger picture
+              </p>
+              <h2 className="mt-4 font-serif text-4xl tracking-tight">
+                Less guessing. More clarity.
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+                See your emergency fund, spending, investments, and debts in
+                one place.
+              </p>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              Illustrative dashboard preview
+            </span>
+          </div>
+
+          <div className="mt-12 overflow-hidden rounded-[20px] border border-border bg-surface shadow-[0_20px_60px_-35px_rgba(35,44,92,0.2)]">
+            <div className="flex items-center justify-between border-b border-border px-6 py-5 sm:px-8">
+              <span className="font-serif text-xl">Your overview</span>
+              <span className="rounded-full bg-success-tint px-3 py-1 text-xs text-success">
+                On track
+              </span>
+            </div>
+
+            <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "Emergency fund", value: "56%", detail: "of target" },
+                { label: "Available this month", value: "2,150 MAD", detail: "of your plan" },
+                { label: "Investments", value: "3,200 MAD", detail: "logged" },
+                { label: "Debt", value: "4,000 MAD", detail: "remaining" },
+              ].map((item) => (
+                <div key={item.label} className="bg-surface p-6 sm:p-8">
+                  <p className="text-sm text-muted-foreground">{item.label}</p>
+                  <p className="mt-4 font-serif text-2xl text-brand">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {item.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-10 border-t border-border p-6 sm:p-8 lg:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-medium">Spending by category</h3>
+                <div className="mt-6 space-y-5">
+                  {[
+                    { name: "Housing", width: "80%" },
+                    { name: "Groceries", width: "52%" },
+                    { name: "Transport", width: "30%" },
+                  ].map((category) => (
+                    <div
+                      key={category.name}
+                      className="grid grid-cols-[90px_1fr] items-center gap-4"
+                    >
+                      <span className="text-sm text-muted-foreground">
+                        {category.name}
+                      </span>
+                      <div className="h-2 overflow-hidden rounded-full bg-border">
+                        <div
+                          className="h-full rounded-full bg-brand-mid"
+                          style={{ width: category.width }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium">Income vs expenses</h3>
+                <div className="mt-6 space-y-5">
+                  <div>
+                    <div className="mb-2 flex justify-between gap-4 text-sm">
+                      <span>Income</span>
+                      <span className="font-mono">10,000 MAD</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-border">
+                      <div className="h-full w-full rounded-full bg-success" />
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="flex flex-col gap-4">
-                <span className="text-[15px] text-muted-foreground">Income vs expenses</span>
-                <div className="flex items-end gap-8 h-36">
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="w-12 rounded-t-[6px] bg-success" style={{ height: "110px" }} />
-                    <span className="text-sm text-muted-foreground">Income</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="w-12 rounded-t-[6px] bg-danger" style={{ height: "68px" }} />
-                    <span className="text-sm text-muted-foreground">Expenses</span>
+                  <div>
+                    <div className="mb-2 flex justify-between gap-4 text-sm">
+                      <span>Expenses</span>
+                      <span className="font-mono">6,400 MAD</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-border">
+                      <div className="h-full w-[64%] rounded-full bg-gold" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -288,80 +469,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ================= NO BANK CONNECTION ================= */}
-      <section className="w-full bg-surface-alt">
-        <div className="max-w-6xl mx-auto px-6 py-24 flex flex-col gap-12">
-          <div className="flex flex-col gap-4 max-w-2xl">
-            <h2 className="font-serif text-3xl md:text-4xl tracking-tight">No bank connection. That's on purpose.</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">Investments and debt are logged by you, not pulled from a linked account.</p>
+      {/* Closing */}
+      <section className="bg-brand text-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-20 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/60">
+              Your money, your decisions
+            </p>
+            <h2 className="mt-4 max-w-xl font-serif text-3xl tracking-tight sm:text-4xl">
+              Start with a clearer picture.
+            </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div className="flex flex-col gap-3">
-              <svg viewBox="0 0 24 24" className="w-7 h-7 stroke-brand" fill="none">
-                <path d="M12 2l7 3v5.5c0 4.9-3.2 9.1-7 10.5-3.8-1.4-7-5.6-7-10.5V5l7-3z" strokeWidth="1.4" strokeLinejoin="round" />
-              </svg>
-              <span className="font-medium text-lg">Private by default</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Nothing to breach because nothing's connected in the first place.</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <svg viewBox="0 0 24 24" className="w-7 h-7 stroke-brand" fill="none">
-                <path d="M4 20l3.5-1L18.5 8 15.5 5 4.5 16 4 20z" strokeWidth="1.4" strokeLinejoin="round" />
-              </svg>
-              <span className="font-medium text-lg">Numbers you trust</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Exactly what you enter, never a miscategorized transaction feed.</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <svg viewBox="0 0 24 24" className="w-7 h-7 stroke-brand" fill="none">
-                <rect x="3" y="10" width="18" height="10" rx="1.5" strokeWidth="1.4" />
-                <path d="M7 10V7a5 5 0 0110 0v3" strokeWidth="1.4" />
-              </svg>
-              <span className="font-medium text-lg">Works with any account</span>
-              <p className="text-[15px] text-muted-foreground leading-relaxed">Moroccan broker, foreign bank, cash. If you can count it, Nisba can track it.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= QUOTE / BOOK CREDIT ================= */}
-      <section className="w-full relative overflow-hidden bg-gold-tint">
-        <svg viewBox="0 0 200 160" className="absolute -right-10 -top-10 w-64 h-52 opacity-30 pointer-events-none fill-gold" fill="none">
-          <path d="M20 100 Q20 50 70 40 L75 55 Q45 65 45 95 Q45 110 60 110 Q75 110 75 95 Q75 82 60 80 L60 65 Q95 68 95 100 Q95 125 65 125 Q20 125 20 100Z" />
-        </svg>
-        <div className="max-w-4xl mx-auto px-6 py-20 flex flex-col gap-8 relative">
-          <p className="font-serif text-2xl md:text-3xl leading-snug text-brand">"Risk comes from not knowing what you are doing."</p>
-          <span className="text-[15px] text-muted-foreground">— Warren Buffett</span>
-          <div className="w-10 h-px bg-gold" />
-          <p className="text-[15px] text-muted-foreground leading-relaxed max-w-xl">
-            Nisba's percentage split is built on the method in <span className="italic">From Dirhams to Dreams</span> by Zouhir Chbakou, on breaking the silence around money in Morocco.
-          </p>
-        </div>
-      </section>
-
-      {/* ================= FINAL CTA ================= */}
-      <section className="w-full bg-brand text-white">
-        <div className="max-w-6xl mx-auto px-6 py-24 flex flex-col items-start gap-7">
-          <h2 className="font-serif text-3xl md:text-4xl tracking-tight">Start giving your dirhams a job.</h2>
-          <Link href="/register" className="bg-white text-brand px-6 py-3.5 rounded-[10px] text-[15px] font-medium hover:bg-white/90 transition-colors">
-            Create account
+          <Link
+            href="/login"
+            className="w-fit rounded-[10px] bg-white px-6 py-3.5 text-sm font-medium text-brand transition-colors hover:bg-white/90"
+          >
+            Log in to Nisba
           </Link>
         </div>
       </section>
 
-      {/* ================= FOOTER ================= */}
-      <footer className="w-full border-t border-border bg-surface">
-        <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row justify-between gap-8">
-          <div className="flex flex-col gap-1.5">
-            <span className="font-serif text-lg font-medium">Nisba</span>
-            <span className="text-[15px] text-muted-foreground">Give every dirham a job.</span>
+      <footer className="border-t border-border bg-surface">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-6 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className="font-serif text-lg text-foreground">Nisba</span>
+            <p className="mt-1">Give every dirham a job.</p>
           </div>
-          <div className="flex gap-8 text-[15px] text-muted-foreground">
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a>
-            <a href="#emergency-fund" className="hover:text-foreground transition-colors">Emergency fund</a>
-            <a href="#dashboard-preview" className="hover:text-foreground transition-colors">Dashboard</a>
-          </div>
-          <span className="text-sm text-muted-foreground">Built by Ayoub Amazyan</span>
+          <span>Built by Ayoub Amazyan</span>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }

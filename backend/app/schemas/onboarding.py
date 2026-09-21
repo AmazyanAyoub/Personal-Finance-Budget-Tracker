@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.models.enums import IncomeMode
 from app.schemas.budget import BudgetSplitOut
@@ -9,6 +9,7 @@ class OnboardingRequest(BaseModel):
     essentials_pct: int
     lifestyle_pct: int
     ef_multiplier: int
+    fixed_salary_cents: int | None = None
     estimated_monthly_income_cents: int
 
     @field_validator("lifestyle_pct")
@@ -32,6 +33,26 @@ class OnboardingRequest(BaseModel):
         if v <= 0:
             raise ValueError("estimated_monthly_income_cents must be positive")
         return v
+
+    @model_validator(mode="after")
+    def validate_fixed_salary(self):
+        has_fixed_income = self.income_mode in {
+            IncomeMode.FIXED_ONLY,
+            IncomeMode.FIXED_PLUS_FREELANCE,
+        }
+
+        if has_fixed_income:
+            if self.fixed_salary_cents is None or self.fixed_salary_cents <= 0:
+                raise ValueError(
+                    "A positive fixed salary is required for this income mode"
+                )
+
+            if self.fixed_salary_cents > self.estimated_monthly_income_cents:
+                raise ValueError(
+                    "Fixed salary cannot exceed estimated monthly income"
+                )
+
+        return self
 
 class OnboardingStatus(BaseModel):
     is_onboarded: bool

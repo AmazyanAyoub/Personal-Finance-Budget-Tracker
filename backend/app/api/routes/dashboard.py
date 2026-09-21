@@ -67,13 +67,21 @@ def _monthly_income_cents(db: Session, year: int, month: int) -> int:
 
 
 def _monthly_expense_cents(db: Session, year: int, month: int) -> int:
-    entries = (
+    expenses = (
         db.query(Expense)
         .filter(extract("year", Expense.date) == year)
         .filter(extract("month", Expense.date) == month)
         .all()
     )
-    return sum(e.amount_cents for e in entries)
+    debt_payments = (
+        db.query(DebtPayment)
+        .filter(extract("year", DebtPayment.date) == year)
+        .filter(extract("month", DebtPayment.date) == month)
+        .all()
+    )
+    return sum(e.amount_cents for e in expenses) + sum(
+        p.amount_cents for p in debt_payments
+    )
 
 
 def _months_back(base: date, n: int) -> list[tuple[int, int]]:
@@ -116,10 +124,6 @@ def get_dashboard(
     essentials_spent_cents = sum(e.amount_cents for e, bucket, name in expense_rows if bucket == BudgetBucket.ESSENTIALS)
     lifestyle_remaining_cents = lifestyle_budget_cents - lifestyle_spent_cents
 
-    category_totals: dict[str, int] = defaultdict(int)
-    for e, bucket, name in expense_rows:
-        category_totals[name] += e.amount_cents
-    spending_by_category = [CategoryBreakdown(category=n, amount_cents=a) for n, a in category_totals.items()]
 
     ef_target_cents = ef_config.target_cents
     ef_current = ef_config.current_balance_cents
@@ -146,9 +150,6 @@ def get_dashboard(
         for y, m in _months_back(today, 6)
     ]
 
-    essentials_actual_pct = round((essentials_spent_cents / income_cents) * 100, 1) if income_cents else 0.0
-    lifestyle_actual_pct = round((lifestyle_spent_cents / income_cents) * 100, 1) if income_cents else 0.0
-
     investments_this_month_cents = sum(
         i.amount_cents for i in db.query(Investment)
         .filter(extract("year", Investment.date) == today.year)
@@ -161,19 +162,65 @@ def get_dashboard(
         .filter(extract("month", DebtPayment.date) == today.month)
         .all()
     )
-    # Freedom Funds "actual" = Investments + Debt payments logged this month.
-    # EF contributions aren't included — your EF balance is a single number you update,
-    # not a dated ledger, so we can't attribute part of it to "this month" specifically.
-    freedom_funds_actual_cents = investments_this_month_cents + debt_payments_this_month_cents
-    freedom_funds_actual_pct = round((freedom_funds_actual_cents / income_cents) * 100, 1) if income_cents else 0.0
+
+    category_totals: dict[tuple[BudgetBucket, str], int] = defaultdict(int)
+
+    for expense, bucket, name in expense_rows:
+        category_totals[(bucket, name)] += expense.amount_cents
+
+    if debt_payments_this_month_cents:
+        category_totals[(BudgetBucket.ESSENTIALS, "Debt payments")] += (
+            debt_payments_this_month_cents
+        )
+
+    spending_by_category = [
+        CategoryBreakdown(
+            category=name,
+            bucket=bucket,
+            amount_cents=amount,
+        )
+        for (bucket, name), amount in category_totals.items()
+    ]
+
+    # Debt payments are Essentials. Investments are Freedom Funds.
+    essentials_actual_cents = essentials_spent_cents + debt_payments_this_month_cents
+    freedom_funds_actual_cents = investments_this_month_cents
+
+    essentials_actual_pct = (
+        round((essentials_actual_cents / income_cents) * 100, 1)
+        if income_cents else 0.0
+    )
+    freedom_funds_actual_pct = (
+        round((freedom_funds_actual_cents / income_cents) * 100, 1)
+        if income_cents else 0.0
+    )
+    lifestyle_actual_pct = (
+        round((lifestyle_spent_cents / income_cents) * 100, 1)
+        if income_cents else 0.0
+    )
 
     budget_comparison = [
-        BudgetComparisonItem(bucket="freedom_funds", planned_pct=float(split.freedom_funds_pct), actual_pct=freedom_funds_actual_pct,
-                              planned_cents=freedom_funds_cents, actual_cents=freedom_funds_actual_cents),
-        BudgetComparisonItem(bucket="essentials", planned_pct=float(split.essentials_pct), actual_pct=essentials_actual_pct,
-                              planned_cents=essentials_budget_cents, actual_cents=essentials_spent_cents),
-        BudgetComparisonItem(bucket="lifestyle", planned_pct=float(split.lifestyle_pct), actual_pct=lifestyle_actual_pct,
-                              planned_cents=lifestyle_budget_cents, actual_cents=lifestyle_spent_cents),
+        BudgetComparisonItem(
+            bucket="freedom_funds",
+            planned_pct=float(split.freedom_funds_pct),
+            actual_pct=freedom_funds_actual_pct,
+            planned_cents=freedom_funds_cents,
+            actual_cents=freedom_funds_actual_cents,
+        ),
+        BudgetComparisonItem(
+            bucket="essentials",
+            planned_pct=float(split.essentials_pct),
+            actual_pct=essentials_actual_pct,
+            planned_cents=essentials_budget_cents,
+            actual_cents=essentials_actual_cents,
+        ),
+        BudgetComparisonItem(
+            bucket="lifestyle",
+            planned_pct=float(split.lifestyle_pct),
+            actual_pct=lifestyle_actual_pct,
+            planned_cents=lifestyle_budget_cents,
+            actual_cents=lifestyle_spent_cents,
+        ),
     ]
 
     return DashboardOut(

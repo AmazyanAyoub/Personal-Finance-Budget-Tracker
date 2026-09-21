@@ -1,10 +1,11 @@
 from pydantic import BaseModel
+from app.models.enums import BudgetBucket
 
 
 class CategoryBreakdown(BaseModel):
     category: str
+    bucket: BudgetBucket
     amount_cents: int
-
 
 class MonthlyTrendPoint(BaseModel):
     year: int
