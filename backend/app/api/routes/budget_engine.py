@@ -11,6 +11,7 @@ from app.models.budget import BudgetSplit, EmergencyFundConfig
 from app.models.income import IncomeEntry
 from app.models.user import User
 from app.schemas.budget_engine import BudgetEngineStatus, EFBalanceUpdate
+from app.core.income import sync_current_month_base_income
 
 router = APIRouter(prefix="/budget-engine", tags=["budget-engine"])
 
@@ -24,13 +25,31 @@ def _current_split(db: Session) -> BudgetSplit | None:
     )
 
 
-def _monthly_income_cents(db: Session, year: int, month: int) -> int:
+def _monthly_income_cents(
+    db: Session,
+    year: int,
+    month: int,
+) -> int:
+    changed = sync_current_month_base_income(
+        db=db,
+        year=year,
+        month=month,
+    )
+
+    if changed:
+        db.commit()
+
     entries = (
         db.query(IncomeEntry)
-        .filter(extract("year", IncomeEntry.date) == year)
-        .filter(extract("month", IncomeEntry.date) == month)
+        .filter(
+            extract("year", IncomeEntry.date) == year
+        )
+        .filter(
+            extract("month", IncomeEntry.date) == month
+        )
         .all()
     )
+
     return sum(entry.amount_cents for entry in entries)
 
 

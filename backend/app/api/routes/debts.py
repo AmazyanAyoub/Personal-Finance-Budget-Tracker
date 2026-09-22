@@ -99,12 +99,52 @@ def log_payment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    debt = db.query(Debt).filter(Debt.id == debt_id).first()
+    debt = (
+        db.query(Debt)
+        .filter(Debt.id == debt_id)
+        .first()
+    )
+
     if not debt:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    db.add(DebtPayment(debt_id=debt_id, **payload.model_dump()))
+        raise HTTPException(
+            status_code=404,
+            detail="Debt not found",
+        )
+
+    total_paid_cents = sum(
+        payment.amount_cents
+        for payment in debt.payments
+    )
+
+    remaining_balance_cents = max(
+        debt.balance_cents - total_paid_cents,
+        0,
+    )
+
+    if remaining_balance_cents == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="This debt is already paid off",
+        )
+
+    if payload.amount_cents > remaining_balance_cents:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Payment cannot exceed the remaining "
+                "debt balance"
+            ),
+        )
+
+    payment = DebtPayment(
+        debt_id=debt_id,
+        **payload.model_dump(),
+    )
+
+    db.add(payment)
     db.commit()
     db.refresh(debt)
+
     return _to_debt_out(debt)
 
 

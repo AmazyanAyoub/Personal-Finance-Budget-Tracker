@@ -1,59 +1,198 @@
-# Nisba — Personal Finance & Budget Tracker Roadmap
+# Nisba — Product Roadmap
 
-Current scope is a solo-use app. This file distinguishes features present in code from features verified end-to-end; a fresh-database walkthrough is still pending.
+Nisba is a Morocco-focused personal finance and budgeting application. It is inspired by ideas from respected personal-finance and investing books, adapted into a practical workflow for income, spending, emergency funds, debt repayment, and investing in Moroccan dirhams.
 
-**Stack:** FastAPI + PostgreSQL + SQLAlchemy + Alembic (backend, using `uv` for venv/deps) · Next.js (TS, App Router) + Tailwind + shadcn/ui + TanStack Query + Recharts (frontend) · simple JWT auth · money stored as integer cents · LLM-based expense auto-categorization (later phase).
+The current version is a verified single-user application. The next milestone is a private deployment, followed by AI-assisted categorization and receipt OCR.
 
----
+## Technology
 
-### ✅ Phase 0 — Scaffolding
-Backend (FastAPI + Postgres connection + SQLAlchemy + Alembic wired up) and frontend (Next.js + Tailwind + shadcn/ui + TanStack Query) skeletons, connected end to end via a `/health` check.
-**Status: Done.**
+- Backend: FastAPI, SQLAlchemy, Alembic, PostgreSQL, JWT authentication
+- Frontend: Next.js, React, TypeScript, Tailwind CSS, TanStack Query, Recharts
+- Money: stored as integer cents and displayed in MAD
+- Development: `uv` for Python commands and npm for the frontend
 
-### ✅ Phase 1 — Auth (single-user JWT)
-`User` model + migration, password hashing (bcrypt via passlib), JWT issuance/verification (`python-jose`), protected `/auth/me` route, one-time seed script (`create_user.py`) instead of a public signup endpoint. Frontend: login page, token in `localStorage`, `AuthGuard` redirecting unauthenticated visits to `/login`.
-**Status: Done.** Full explanation: [docs/PHASE_1_AUTH.md](docs/PHASE_1_AUTH.md), diagram: [docs/AUTH_FLOW.md](docs/AUTH_FLOW.md). Live call-by-call trace tool: `backend/scripts/trace_auth_flow.py` → writes `backend/AUTH_TRACE.md`.
+## Completed foundation
 
-### ✅ Phase 2 — Core data models & onboarding
-Models: `IncomeModeConfig`, `BudgetSplit` (versioned by `effective_date`), `EmergencyFundConfig` (multiplier), `Debt`, `Category`, `IncomeEntry`, `Expense` + migrations. Onboarding flow: pick income mode, set budget split % (must sum to 100), set EF multiplier (3–6).
-**Status: Done.** Full explanation: [docs/PHASE_2_DATA_MODELS.md](docs/PHASE_2_DATA_MODELS.md).
+### Phase 0 — Project scaffolding
 
-### 🟡 Phase 3 — Income CRUD
-Income entry CRUD and monthly summaries are implemented. Fixed salary can be configured and an entry is generated when the current month is read; historical months are no longer auto-filled from today's salary.
-**Status: Implemented; end-to-end verification pending.** Current-month generation still happens during GET requests and lacks a database uniqueness guard, so concurrent reads can create duplicates.
+- FastAPI backend and Next.js frontend
+- PostgreSQL connection and Alembic migrations
+- Backend/frontend health connection
+- Dockerfiles and Docker Compose configuration
 
-### 🟡 Phase 4 — Expense CRUD (manual only)
-Expense CRUD, manual category selection, and monthly filtering/summaries are implemented. No AI categorization yet.
-**Status: Implemented; fresh-database verification pending.**
+**Status: Complete.**
 
-### 🟡 Phase 5 — Debt tracking
-Debt CRUD, payment logging/history, remaining-balance calculation, and progress view are implemented.
-**Status: Implemented; fresh-database verification pending.** Debt payments belong in Essentials, but the dashboard still counts them under Freedom Funds in its planned-vs-actual comparison.
+### Phase 1 — Single-user authentication
 
-### 🟡 Phase 6 — Budget engine & Emergency Fund phase logic *(critical logic)*
-The EF target is calculated from the onboarding income estimate and Essentials percentage, then stored. Below the target, the engine recommends 100% of Freedom Funds to the EF; at or above the target, it recommends 100% to investments. Debt is not recommended from Freedom Funds. Three unit tests cover one cent below, exactly at, and above the target.
-**Status: Core recommendation implemented and unit-tested; integration and historical behavior pending.** The old Investments/Debt allocation model and endpoints still exist but are no longer used by the recommendation. Persisted monthly allocation history has not been implemented.
+- User model and password hashing
+- JWT login and protected `/auth/me` endpoint
+- One-time user creation script instead of public registration
+- Frontend authentication guard validates the token with the backend
+- Expired or invalid tokens are removed and redirected to login
+- Connection errors show a retry state instead of incorrectly logging the user out
 
-### 🟡 Phase 7 — Dashboard and investments
-The dashboard shows EF progress, Lifestyle remaining, investment totals, debt remaining, spending by category, a six-month income/expense chart, and planned-vs-actual budget bars. An investment ledger and per-type summary are implemented.
-**Status: Implemented; manual calculation against a test month and fresh-database verification pending.** The dashboard's debt-payment bucket needs correction before its comparison can be trusted.
+**Status: Complete and manually verified.**
 
-### ⬜ Phase 8 — AI categorization
-LLM call (note text → suggested category) on expense creation, with accept/override and graceful fallback on API failure.
-**Done when:** new expenses get a suggestion at acceptable latency; overrides persist; API failure doesn't block expense creation.
+See [docs/PHASE_1_AUTH.md](docs/PHASE_1_AUTH.md) and [docs/AUTH_FLOW.md](docs/AUTH_FLOW.md).
 
-### Current stabilization work
-- Protected app layout redirects to login when onboarding-status returns 401 and shows a retry state for other failures. Other API calls still need consistent expired-token and loading/error handling.
-- Docker Compose and Dockerfiles exist; first-run user/category/investment-type setup and a fresh-database walkthrough are not yet verified.
-- Next priorities: correct debt payments in dashboard Essentials, prevent current-month fixed-salary duplicates, verify the full flow on a disposable database, and finish frontend loading/error handling.
+### Phase 2 — Onboarding and financial plan
 
----
+- Expected base monthly income
+- Optional disclosure of available savings outside the emergency fund
+- Freedom Funds, Essentials, and Lifestyle allocation percentages
+- Emergency-fund target of 3–6 months of Essentials
+- Current emergency-fund balance captured during onboarding
+- Percentages validated to total 100%
+- Base income automatically synchronized for the current month
 
-### Explicitly out of scope for now
-- Casablanca Stock Exchange price integration
-- OCR receipt scanning, chatbot input channel
-- Multi-user support, OAuth, team features
+Blank available savings means private; zero means the user explicitly reports no other savings.
 
-### Working agreement
-- One phase at a time — wait for explicit confirmation before starting the next.
-- The assistant provides code and commands for manual execution unless explicitly authorized to make a particular change.
+**Status: Complete and manually verified.**
+
+### Phase 3 — Income tracking
+
+- One expected base-income entry for the current month
+- Arbitrary additional income such as freelancing, bonuses, e-commerce, or trading
+- Income create, read, update, and delete operations
+- Monthly base/additional/total summaries
+- Historical months are never populated using today’s income configuration
+- Database uniqueness protection prevents duplicate automatic base-income entries
+- Unit tests cover current-month synchronization and historical behavior
+
+**Status: Complete and tested.**
+
+### Phase 4 — Expense tracking
+
+- Manual expense entry with date, amount, note, and category
+- Essentials and Lifestyle categories
+- Monthly filtering and summaries
+- Category-level dashboard breakdown
+- Loading, error, and empty states
+
+**Status: Complete and manually verified.**
+
+### Phase 5 — Debt tracking
+
+- Debt creation with starting balance, planned monthly payment, and optional payoff date
+- Remaining-balance and repayment-progress calculations
+- Payment history
+- Overpayment protection
+- Regular payments classified as monthly Essentials
+- Extra or advance payments reduce debt but remain separate from regular monthly expenses
+- Optional funding source for extra payments: current income, existing savings, or undisclosed
+
+Previously created payments are preserved and classified as regular by the migration because their original type cannot be inferred safely.
+
+**Status: Complete and manually verified.**
+
+### Phase 6 — Emergency-fund budget engine
+
+- Emergency-fund target derived from monthly income, Essentials percentage, and selected multiplier
+- Below the target, Freedom Funds are recommended for the emergency fund
+- At or above the target, Freedom Funds are recommended for investing
+- The recommendation guides the user but does not prevent investment actions
+- Debts remain part of Essentials rather than Freedom Funds
+- Boundary tests cover one cent below, exactly at, and above the target
+- Obsolete Freedom Funds debt-allocation model, API logic, and database table removed
+
+**Status: Complete and unit-tested.**
+
+### Phase 7 — Dashboard, investments, and interface
+
+- Responsive dashboard and shared authenticated application layout
+- Monthly income versus regular-expense comparison
+- Six-month trend chart
+- Planned-versus-actual bucket comparison
+- Essentials and Lifestyle category breakdown
+- Emergency-fund status and guidance
+- Investment ledger and investment-type summary
+- Regular debt payments included under Essentials
+- Extra debt payoff displayed separately as a financial move
+- Optional available savings displayed only when disclosed
+- Redesigned landing, login, onboarding, dashboard, management, income, expense, debt, investment, and emergency-fund pages
+- Consistent loading, error, empty, spacing, and responsive states
+
+**Status: Complete, manually verified, linted, type-checked, and production-built.**
+
+## Current stabilization baseline
+
+- Alembic database is at revision `66b7c59bd3af`
+- Budget-engine tests pass
+- Income synchronization tests pass
+- Backend application imports successfully
+- Frontend ESLint passes
+- TypeScript checking passes
+- Next.js production build passes using Webpack
+- The onboarding, income, expense, debt, investment, emergency-fund, and dashboard flows have been manually exercised
+
+## Next milestones
+
+### Phase 8 — Private deployment
+
+- Deploy PostgreSQL, FastAPI, and Next.js to a private staging environment
+- Configure production environment variables and secrets
+- Apply Alembic migrations during deployment
+- Configure frontend API URL and backend CORS origins
+- Verify authentication, persistence, refresh behavior, and all primary workflows remotely
+- Add database backup and recovery procedures
+- Review logs and deployment health checks
+
+**Done when:** the verified local baseline works consistently in a private hosted environment.
+
+### Phase 9 — AI-assisted expense categorization
+
+- Suggest a category from an expense description
+- Show the suggestion before saving
+- Allow the user to accept or override it
+- Remember explicit corrections where appropriate
+- Fall back to manual selection if the AI service is unavailable
+- Avoid sending unnecessary financial or personal information to the model
+
+**Done when:** suggestions are useful, editable, privacy-conscious, and never block expense creation.
+
+### Phase 10 — Receipt OCR
+
+- Upload or photograph a receipt
+- Extract merchant, date, total, and useful line-item text
+- Present extracted fields for confirmation before saving
+- Combine OCR output with category suggestions
+- Reject unsupported files safely and handle low-confidence results
+- Define retention and deletion rules for receipt images
+
+**Done when:** a receipt can produce a reviewable draft expense without silently saving incorrect data.
+
+### Phase 11 — Multi-user architecture
+
+- Associate all financial records with a user
+- Enforce user ownership in every query and mutation
+- Add registration, password recovery, and account management
+- Replace browser token storage with a production-grade authentication approach
+- Add authorization and tenant-isolation tests
+- Migrate existing single-user data safely
+
+**Done when:** multiple users can use Nisba without accessing or affecting each other’s information.
+
+### Phase 12 — Financial learning and market information
+
+- Curated books, courses, and educational videos
+- Practical explanations of budgeting and investment methods
+- Morocco-relevant financial and economic resources
+- Market and Casablanca Stock Exchange information where reliable data is available
+- Clear separation between education, application guidance, and professional financial advice
+
+## Product principles
+
+- Guide rather than force the user’s financial decisions.
+- Keep undisclosed information genuinely optional.
+- Separate routine spending from exceptional financial moves.
+- Never silently convert uncertain OCR or AI output into a real transaction.
+- Store money as integer cents and protect financial calculations with tests.
+- Prefer understandable recommendations over opaque automation.
+- Adapt established financial ideas to the user’s context instead of presenting one method as universally correct.
+
+## Working agreement
+
+- Work on one verified step at a time.
+- Explain the reason for a change before introducing it.
+- The assistant provides code and commands for manual execution unless explicitly authorized to edit a particular file.
+- Complete tests and documentation before creating each stable baseline commit.

@@ -9,6 +9,8 @@ import {
   listDebtPayments,
   logDebtPayment,
   type Debt,
+  type DebtPaymentFundingSource,
+  type DebtPaymentType,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
@@ -44,6 +46,8 @@ function DebtCard({ debt }: { debt: Debt }) {
   const token = getToken()!;
   const queryClient = useQueryClient();
 
+  const [paymentType, setPaymentType] = useState<DebtPaymentType>("regular");
+  const [fundingSource, setFundingSource] = useState<DebtPaymentFundingSource | "">("");
   const [showHistory, setShowHistory] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(localDateInputValue());
@@ -95,11 +99,18 @@ function DebtCard({ debt }: { debt: Debt }) {
       await logDebtPayment(token, debt.id, {
         amount_cents: paymentCents,
         date: paymentDate,
+        payment_type: paymentType,
+        funding_source:
+          paymentType === "extra"
+            ? fundingSource || null
+            : null,
         note: paymentNote.trim() || undefined,
       });
 
       setPaymentAmount("");
       setPaymentNote("");
+      setPaymentType("regular");
+      setFundingSource("");
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["debts"] }),
@@ -239,15 +250,115 @@ function DebtCard({ debt }: { debt: Debt }) {
           <h3 className="mt-2 font-serif text-xl">
             Record a payment you made
           </h3>
+
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            This reduces the remaining balance and counts as Essentials
-            spending for the selected month.
+            A regular payment counts under monthly Essentials. An extra
+            payment reduces your debt but appears separately from normal
+            monthly expenses.
           </p>
 
           <form
             onSubmit={handleLogPayment}
             className="mt-6 grid gap-4 sm:grid-cols-2"
           >
+            <fieldset className="sm:col-span-2">
+              <legend className="text-sm font-medium">
+                What kind of payment is this?
+              </legend>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label
+                  className={`cursor-pointer rounded-[12px] border p-4 transition-colors ${
+                    paymentType === "regular"
+                      ? "border-brand bg-brand-tint"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`payment-type-${debt.id}`}
+                    value="regular"
+                    checked={paymentType === "regular"}
+                    onChange={() => {
+                      setPaymentType("regular");
+                      setFundingSource("");
+                    }}
+                    className="mr-2"
+                  />
+
+                  <span className="text-sm font-medium">
+                    Regular payment
+                  </span>
+
+                  <span className="mt-1 block pl-6 text-xs leading-relaxed text-muted-foreground">
+                    Your normal installment. It counts under monthly
+                    Essentials.
+                  </span>
+                </label>
+
+                <label
+                  className={`cursor-pointer rounded-[12px] border p-4 transition-colors ${
+                    paymentType === "extra"
+                      ? "border-gold bg-gold/10"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`payment-type-${debt.id}`}
+                    value="extra"
+                    checked={paymentType === "extra"}
+                    onChange={() => setPaymentType("extra")}
+                    className="mr-2"
+                  />
+
+                  <span className="text-sm font-medium">
+                    Extra payment
+                  </span>
+
+                  <span className="mt-1 block pl-6 text-xs leading-relaxed text-muted-foreground">
+                    An advance or exceptional payment. It is shown
+                    separately from regular expenses.
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            {paymentType === "extra" && (
+              <label className="text-sm font-medium sm:col-span-2">
+                Where did this extra payment come from?{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+
+                <select
+                  value={fundingSource}
+                  onChange={(event) =>
+                    setFundingSource(
+                      event.target.value as
+                        | DebtPaymentFundingSource
+                        | ""
+                    )
+                  }
+                  className="mt-2 w-full rounded-[10px] border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-brand"
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="current_income">
+                    This month&apos;s income
+                  </option>
+                  <option value="existing_savings">
+                    Existing savings
+                  </option>
+                </select>
+
+                <span className="mt-2 block text-xs font-normal leading-relaxed text-muted-foreground">
+                  This provides context only. Nisba will not
+                  automatically subtract the payment from your
+                  reported savings.
+                </span>
+              </label>
+            )}
+
             <label className="text-sm font-medium">
               Actual amount paid
               <div className="mt-2 flex items-center rounded-[10px] border border-border bg-surface px-4 focus-within:border-brand">
@@ -350,13 +461,41 @@ function DebtCard({ debt }: { debt: Debt }) {
                       className="flex flex-col gap-2 border-b border-border px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
-                        <p className="text-sm">{formatDate(payment.date)}</p>
-                        {payment.note && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {payment.note}
-                          </p>
-                        )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm">
+                          {formatDate(payment.date)}
+                        </p>
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                            payment.payment_type === "extra"
+                              ? "bg-gold/10 text-gold"
+                              : "bg-brand-tint text-brand"
+                          }`}
+                        >
+                          {payment.payment_type === "extra"
+                            ? "Extra payment"
+                            : "Regular payment"}
+                        </span>
                       </div>
+
+                      {payment.payment_type === "extra" && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Funding:{" "}
+                          {payment.funding_source === "current_income"
+                            ? "this month’s income"
+                            : payment.funding_source === "existing_savings"
+                              ? "existing savings"
+                              : "not disclosed"}
+                        </p>
+                      )}
+
+                      {payment.note && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {payment.note}
+                        </p>
+                      )}
+                    </div>
                       <span className="font-mono text-sm tabular-nums text-success">
                         {formatMAD(payment.amount_cents)}
                       </span>

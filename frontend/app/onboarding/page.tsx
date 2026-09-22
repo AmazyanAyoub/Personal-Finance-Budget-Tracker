@@ -1,31 +1,13 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { submitOnboarding } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { AuthGuard } from "../auth-guard";
-
-const INCOME_MODES = [
-  {
-    value: "fixed_only",
-    title: "Fixed income",
-    description: "A regular monthly salary or other predictable income.",
-  },
-  {
-    value: "fixed_plus_freelance",
-    title: "Fixed + freelance",
-    description: "Regular income with additional variable earnings.",
-  },
-  {
-    value: "freelance_only",
-    title: "Freelance income",
-    description: "Income that can change from month to month.",
-  },
-];
-
 
 function formatMAD(amount: number) {
   return `${amount.toLocaleString("en-US", {
@@ -38,20 +20,38 @@ function OnboardingForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [incomeMode, setIncomeMode] = useState("fixed_only");
-  const [estimatedIncome, setEstimatedIncome] = useState("");
+  const [availableSavings, setAvailableSavings] = useState("");
+  const [monthlyIncome, setMonthlyIncome] = useState("");
   const [freedomFundsPct, setFreedomFundsPct] = useState(20);
   const [essentialsPct, setEssentialsPct] = useState(50);
   const [lifestylePct, setLifestylePct] = useState(30);
   const [efMultiplier, setEfMultiplier] = useState(3);
+  const [currentEfBalance, setCurrentEfBalance] =
+    useState("0");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [fixedSalary, setFixedSalary] = useState("");
 
-  const income = Number(estimatedIncome) || 0;
-  const total = freedomFundsPct + essentialsPct + lifestylePct;
+  const income = Number(monthlyIncome) || 0;
+  const currentEf = Number(currentEfBalance) || 0;
+
+  const total =
+    freedomFundsPct + essentialsPct + lifestylePct;
+
   const emergencyFundTarget =
     income * (essentialsPct / 100) * efMultiplier;
+
+  const emergencyFundGap = Math.max(
+    emergencyFundTarget - currentEf,
+    0
+  );
+
+  const emergencyFundProgress =
+    emergencyFundTarget > 0
+      ? Math.min(
+          (currentEf / emergencyFundTarget) * 100,
+          100
+        )
+      : 0;
 
   const buckets = [
     {
@@ -87,18 +87,44 @@ function OnboardingForm() {
   ) {
     if (income <= 0) return;
 
-    const percentage = Math.round((Number(value) / income) * 100);
-    setPercentage(Math.max(0, Math.min(100, percentage)));
+    const percentage = Math.round(
+      (Number(value) / income) * 100
+    );
+
+    setPercentage(
+      Math.max(0, Math.min(100, percentage))
+    );
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
+
     if (submitting) return;
 
     setError(null);
 
-    if (!Number.isInteger(total) || total !== 100) {
-      setError(`Your three percentages must add up to 100%. They currently add up to ${total}%.`);
+    const monthlyIncomeCents = Math.round(
+      Number(monthlyIncome) * 100
+    );
+
+    if (
+      !Number.isFinite(monthlyIncomeCents) ||
+      monthlyIncomeCents <= 0
+    ) {
+      setError("Enter a valid monthly income.");
+      return;
+    }
+
+    if (
+      !Number.isInteger(total) ||
+      total !== 100
+    ) {
+      setError(
+        `Your three percentages must add up to 100%. ` +
+          `They currently add up to ${total}%.`
+      );
       return;
     }
 
@@ -110,42 +136,63 @@ function OnboardingForm() {
           bucket.percentage > 100
       )
     ) {
-      setError("Enter a whole percentage between 0 and 100 for each bucket.");
+      setError(
+        "Enter a whole percentage between 0 and 100 " +
+          "for each bucket."
+      );
       return;
     }
 
-    const estimatedIncomeCents = Math.round(income * 100);
-
-    let fixedSalaryCents: number | null = null;
-
-    if (incomeMode === "fixed_only") {
-      fixedSalaryCents = estimatedIncomeCents;
+    if (
+      !Number.isInteger(efMultiplier) ||
+      efMultiplier < 3 ||
+      efMultiplier > 6
+    ) {
+      setError(
+        "Choose an emergency-fund target between " +
+          "3 and 6 months."
+      );
+      return;
     }
 
-    if (incomeMode === "fixed_plus_freelance") {
-      fixedSalaryCents = Math.round(Number(fixedSalary) * 100);
+    if (currentEfBalance.trim() === "") {
+      setError(
+        "Enter your current emergency-fund balance. " +
+          "Use 0 if you have not started yet."
+      );
+      return;
+    }
 
-      if (!Number.isFinite(fixedSalaryCents) || fixedSalaryCents <= 0) {
-        setError("Enter a valid fixed monthly salary.");
-        return;
-      }
+    const currentEfBalanceCents = Math.round(
+      Number(currentEfBalance) * 100
+    );
 
-      if (fixedSalaryCents > estimatedIncomeCents) {
+    if (
+      !Number.isFinite(currentEfBalanceCents) ||
+      currentEfBalanceCents < 0
+    ) {
+      setError(
+        "Enter a valid emergency-fund balance."
+      );
+      return;
+    }
+
+    let availableSavingsCents: number | null = null;
+
+    if (availableSavings.trim() !== "") {
+      availableSavingsCents = Math.round(
+        Number(availableSavings) * 100
+      );
+
+      if (
+        !Number.isFinite(availableSavingsCents) ||
+        availableSavingsCents < 0
+      ) {
         setError(
-          "The fixed salary cannot be greater than the estimated total income."
+          "Enter a valid savings amount or leave it blank."
         );
         return;
       }
-    }
-
-    if (!Number.isFinite(estimatedIncomeCents) || estimatedIncomeCents <= 0) {
-      setError("Enter a valid estimated monthly income.");
-      return;
-    }
-
-    if (!Number.isInteger(efMultiplier) || efMultiplier < 3 || efMultiplier > 6) {
-      setError("Choose an emergency-fund target between 3 and 6 months.");
-      return;
     }
 
     const token = getToken();
@@ -158,23 +205,46 @@ function OnboardingForm() {
     setSubmitting(true);
 
     try {
-      const savedOnboarding = await submitOnboarding(token, {
-        income_mode: incomeMode,
-        freedom_funds_pct: freedomFundsPct,
-        essentials_pct: essentialsPct,
-        lifestyle_pct: lifestylePct,
-        ef_multiplier: efMultiplier,
-        estimated_monthly_income_cents: estimatedIncomeCents,
-        fixed_salary_cents: fixedSalaryCents,
-      });
+      const savedOnboarding = await submitOnboarding(
+        token,
+        {
+          monthly_income_cents: monthlyIncomeCents,
+          freedom_funds_pct: freedomFundsPct,
+          essentials_pct: essentialsPct,
+          lifestyle_pct: lifestylePct,
+          ef_multiplier: efMultiplier,
+          current_ef_balance_cents: currentEfBalanceCents,
+          available_savings_cents: availableSavingsCents
+        }
+      );
 
       queryClient.setQueryData(
         ["onboarding-status"],
         savedOnboarding
       );
 
-      router.replace("/dashboard");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["income-entries"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["income-summary"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["monthly-income"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["budget-engine-status"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["available-savings"],
+        }),
+      ]);
 
+      router.replace("/dashboard");
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -190,9 +260,13 @@ function OnboardingForm() {
     <main className="min-h-screen bg-background">
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex h-18 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="font-serif text-2xl text-brand">
+          <Link
+            href="/"
+            className="font-serif text-2xl text-brand"
+          >
             Nisba
           </Link>
+
           <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Your first plan
           </span>
@@ -200,111 +274,88 @@ function OnboardingForm() {
       </header>
 
       <div className="mx-auto grid max-w-6xl gap-12 px-6 py-12 lg:grid-cols-[1fr_320px] lg:gap-16 lg:py-16">
-        <form onSubmit={handleSubmit} className="min-w-0">
+        <form
+          onSubmit={handleSubmit}
+          className="min-w-0"
+        >
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
             Getting started
           </p>
+
           <h1 className="mt-4 font-serif text-4xl tracking-tight sm:text-5xl">
             Build your first money plan.
           </h1>
+
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Tell Nisba how your income works, choose your three buckets, and
-            set a target for your emergency fund. You stay in control of every
-            decision and transfer.
+            Add the income you normally count on, choose how
+            you want to divide it, and tell Nisba where your
+            emergency fund stands today.
           </p>
 
-          {/* Income mode */}
+          {/* Monthly income */}
           <section className="mt-12">
             <div className="flex items-start gap-4">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tint font-mono text-xs text-brand">
                 01
               </span>
-              <div>
-                <h2 className="font-serif text-2xl">How does income arrive?</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Choose the option that best matches your situation.
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {INCOME_MODES.map((mode) => (
-                <label
-                  key={mode.value}
-                  className={`cursor-pointer rounded-[14px] border p-5 transition-colors ${
-                    incomeMode === mode.value
-                      ? "border-brand bg-brand-tint"
-                      : "border-border bg-surface hover:border-brand/40"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="income_mode"
-                    value={mode.value}
-                    checked={incomeMode === mode.value}
-                    onChange={() => setIncomeMode(mode.value)}
-                    className="accent-brand"
-                  />
-                  <span className="mt-4 block text-sm font-medium">
-                    {mode.title}
-                  </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">
-                    {mode.description}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          {/* Estimated income */}
-          <section className="mt-12 border-t border-border pt-10">
-            <div className="flex items-start gap-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tint font-mono text-xs text-brand">
-                02
-              </span>
               <div>
-                <h2 className="font-serif text-2xl">Estimate your monthly income.</h2>
+                <h2 className="font-serif text-2xl">
+                  What income can you count on monthly?
+                </h2>
+
                 <p className="mt-1 text-sm text-muted-foreground">
-                  This helps calculate your example split and emergency-fund
-                  target. It does not create an income entry.
+                  Nisba records this as your base income once
+                  each current month. You can add bonuses,
+                  freelancing, trading, or any other income
+                  separately later.
                 </p>
               </div>
             </div>
 
             <label
-              htmlFor="estimated-income"
+              htmlFor="monthly-income"
               className="mt-6 block text-sm font-medium"
             >
-              Estimated monthly income
+              Base monthly income
             </label>
+
             <div className="mt-2 flex max-w-sm items-center rounded-[10px] border border-border bg-surface px-4 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
               <input
-                id="estimated-income"
+                id="monthly-income"
                 type="number"
                 min="0.01"
                 step="0.01"
                 required
                 placeholder="e.g. 17000"
-                value={estimatedIncome}
-                onChange={(event) => setEstimatedIncome(event.target.value)}
+                value={monthlyIncome}
+                onChange={(event) =>
+                  setMonthlyIncome(event.target.value)
+                }
                 className="min-w-0 flex-1 bg-transparent py-3.5 font-mono text-base outline-none"
               />
-              <span className="text-sm text-muted-foreground">MAD</span>
+
+              <span className="text-sm text-muted-foreground">
+                MAD
+              </span>
             </div>
-            
           </section>
 
           {/* Budget split */}
           <section className="mt-12 border-t border-border pt-10">
             <div className="flex items-start gap-4">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tint font-mono text-xs text-brand">
-                03
+                02
               </span>
+
               <div>
-                <h2 className="font-serif text-2xl">Choose your three buckets.</h2>
+                <h2 className="font-serif text-2xl">
+                  Choose your three buckets.
+                </h2>
+
                 <p className="mt-1 text-sm text-muted-foreground">
-                  You can edit a percentage or its MAD amount. The three
-                  percentages must add up to 100%.
+                  Edit a percentage or its MAD amount. The
+                  three percentages must add up to 100%.
                 </p>
               </div>
             </div>
@@ -318,7 +369,12 @@ function OnboardingForm() {
                     style={{
                       width: `${
                         total > 0
-                          ? (Math.max(0, bucket.percentage) / total) * 100
+                          ? (Math.max(
+                              0,
+                              bucket.percentage
+                            ) /
+                              total) *
+                            100
                           : 0
                       }%`,
                     }}
@@ -338,8 +394,12 @@ function OnboardingForm() {
                       <span
                         className={`h-2.5 w-2.5 rounded-full ${bucket.color}`}
                       />
-                      <span className="text-sm font-medium">{bucket.name}</span>
+
+                      <span className="text-sm font-medium">
+                        {bucket.name}
+                      </span>
                     </div>
+
                     <p className="mt-1 pl-5 text-xs text-muted-foreground">
                       {bucket.description}
                     </p>
@@ -347,6 +407,7 @@ function OnboardingForm() {
 
                   <label className="text-xs text-muted-foreground">
                     Percent
+
                     <div className="mt-1 flex items-center rounded-[8px] border border-border px-2">
                       <input
                         type="number"
@@ -355,22 +416,32 @@ function OnboardingForm() {
                         step="1"
                         value={bucket.percentage}
                         onChange={(event) =>
-                          bucket.setPercentage(Number(event.target.value))
+                          bucket.setPercentage(
+                            Number(event.target.value)
+                          )
                         }
                         className="w-full min-w-0 bg-transparent py-2 font-mono text-sm outline-none"
                       />
+
                       <span>%</span>
                     </div>
                   </label>
 
                   <label className="text-xs text-muted-foreground">
                     Amount
+
                     <div className="mt-1 flex items-center rounded-[8px] border border-border px-2">
                       <input
                         type="number"
                         min="0"
                         step="0.01"
-                        value={income > 0 ? amountFor(bucket.percentage) : ""}
+                        value={
+                          income > 0
+                            ? amountFor(
+                                bucket.percentage
+                              )
+                            : ""
+                        }
                         onChange={(event) =>
                           handleAmountChange(
                             bucket.setPercentage,
@@ -381,6 +452,7 @@ function OnboardingForm() {
                         placeholder="0.00"
                         className="w-full min-w-0 bg-transparent py-2 font-mono text-sm outline-none disabled:opacity-50"
                       />
+
                       <span>MAD</span>
                     </div>
                   </label>
@@ -390,10 +462,15 @@ function OnboardingForm() {
 
             <p
               className={`mt-4 text-sm ${
-                total === 100 ? "text-success" : "text-danger"
+                total === 100
+                  ? "text-success"
+                  : "text-danger"
               }`}
             >
-              Total: {total}% {total === 100 ? "— ready to continue" : "— must equal 100%"}
+              Total: {total}%{" "}
+              {total === 100
+                ? "— ready to continue"
+                : "— must equal 100%"}
             </p>
           </section>
 
@@ -401,13 +478,17 @@ function OnboardingForm() {
           <section className="mt-12 border-t border-border pt-10">
             <div className="flex items-start gap-4">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tint font-mono text-xs text-brand">
-                04
+                03
               </span>
+
               <div>
-                <h2 className="font-serif text-2xl">Set your safety cushion.</h2>
+                <h2 className="font-serif text-2xl">
+                  Set your safety cushion.
+                </h2>
+
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Pick a target equal to 3–6 months of estimated Essentials.
-                  Debt payments are included in Essentials.
+                  Choose a target of 3–6 months of Essentials,
+                  then enter what you already have saved.
                 </p>
               </div>
             </div>
@@ -418,6 +499,7 @@ function OnboardingForm() {
             >
               Months of Essentials
             </label>
+
             <input
               id="ef-months"
               type="number"
@@ -426,23 +508,131 @@ function OnboardingForm() {
               step="1"
               value={efMultiplier}
               onChange={(event) =>
-                setEfMultiplier(Number(event.target.value))
+                setEfMultiplier(
+                  Number(event.target.value)
+                )
               }
               className="mt-2 w-28 rounded-[10px] border border-border bg-surface px-4 py-3 font-mono outline-none focus:border-brand"
             />
 
             <div className="mt-6 rounded-[14px] border border-border bg-surface p-6">
               <p className="text-sm text-muted-foreground">
-                Your estimated emergency-fund target
+                Your emergency-fund target
               </p>
+
               <p className="mt-2 font-serif text-3xl text-brand">
                 {formatMAD(emergencyFundTarget)}
               </p>
+
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Based on your income estimate × Essentials percentage ×
+                Monthly income × Essentials percentage ×
                 selected months.
               </p>
             </div>
+
+            <label
+              htmlFor="current-ef-balance"
+              className="mt-7 block text-sm font-medium"
+            >
+              How much is currently in your emergency fund?
+            </label>
+
+            <div className="mt-2 flex max-w-sm items-center rounded-[10px] border border-border bg-surface px-4 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+              <input
+                id="current-ef-balance"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={currentEfBalance}
+                onChange={(event) =>
+                  setCurrentEfBalance(event.target.value)
+                }
+                className="min-w-0 flex-1 bg-transparent py-3.5 font-mono text-base outline-none"
+              />
+
+              <span className="text-sm text-muted-foreground">
+                MAD
+              </span>
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              Enter 0 if you have not started building it yet.
+            </p>
+
+            {emergencyFundTarget > 0 && (
+              <div className="mt-6 rounded-[14px] bg-brand-tint p-5">
+                <div className="flex items-end justify-between gap-4">
+                  <span className="text-sm text-muted-foreground">
+                    Current progress
+                  </span>
+
+                  <span className="font-serif text-2xl text-brand">
+                    {emergencyFundProgress.toFixed(1)}%
+                  </span>
+                </div>
+
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-brand"
+                    style={{
+                      width: `${emergencyFundProgress}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {emergencyFundGap > 0
+                    ? `${formatMAD(
+                        emergencyFundGap
+                      )} remaining to reach your target.`
+                    : "Your emergency-fund target is already met."}
+                </p>
+              </div>
+            )}
+
+            <div className="mt-8 border-t border-border pt-7">
+            <label
+              htmlFor="available-savings"
+              className="block text-sm font-medium"
+            >
+              Other available savings{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </label>
+
+            <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
+              Money outside your emergency fund that could be used for
+              large financial moves, such as an extra debt payment.
+              Leave this blank if you prefer to keep it private.
+            </p>
+
+            <div className="mt-3 flex max-w-sm items-center rounded-[10px] border border-border bg-surface px-4 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+              <input
+                id="available-savings"
+                type="number"
+                min="0"
+                step="0.01"
+                value={availableSavings}
+                onChange={(event) =>
+                  setAvailableSavings(event.target.value)
+                }
+                placeholder="Leave blank to keep private"
+                className="min-w-0 flex-1 bg-transparent py-3.5 font-mono text-base outline-none"
+              />
+
+              <span className="text-sm text-muted-foreground">
+                MAD
+              </span>
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              Blank means private. Enter 0 only if you want to declare
+              that you currently have no other savings.
+            </p>
+          </div>
+
           </section>
 
           {error && (
@@ -459,35 +649,48 @@ function OnboardingForm() {
             disabled={submitting}
             className="mt-8 rounded-[10px] bg-brand px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Saving your plan…" : "Finish setup"}
+            {submitting
+              ? "Saving your plan…"
+              : "Finish setup"}
           </button>
         </form>
 
-        {/* Side note */}
         <aside className="h-fit rounded-[18px] border border-border bg-surface p-6 lg:sticky lg:top-8">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
             How Nisba helps
           </p>
+
           <h2 className="mt-4 font-serif text-2xl">
-            A guide, not an autopilot.
+            Simple income, flexible additions.
           </h2>
+
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Nisba tracks the numbers you enter and shows how they compare with
-            your plan. It does not move money between accounts.
+            Your base income is recorded automatically once
+            per current month. Everything else can be added
+            later using any name you choose.
           </p>
 
           <div className="mt-7 space-y-5 border-t border-border pt-6 text-sm">
             <p>
-              <span className="font-medium text-brand">01.</span>{" "}
-              Choose a plan that fits your income.
+              <span className="font-medium text-brand">
+                01.
+              </span>{" "}
+              Start with the income you normally expect.
             </p>
+
             <p>
-              <span className="font-medium text-brand">02.</span>{" "}
-              Build your emergency fund toward its target.
+              <span className="font-medium text-brand">
+                02.
+              </span>{" "}
+              Add side income whenever it arrives.
             </p>
+
             <p>
-              <span className="font-medium text-brand">03.</span>{" "}
-              Decide what to do with your money next.
+              <span className="font-medium text-brand">
+                03.
+              </span>{" "}
+              Keep building your emergency fund toward its
+              target.
             </p>
           </div>
         </aside>

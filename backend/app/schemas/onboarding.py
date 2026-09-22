@@ -1,62 +1,80 @@
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
-from app.models.enums import IncomeMode
 from app.schemas.budget import BudgetSplitOut
 
+
 class OnboardingRequest(BaseModel):
-    income_mode: IncomeMode
+    monthly_income_cents: int
+    available_savings_cents: int | None = None
     freedom_funds_pct: int
     essentials_pct: int
     lifestyle_pct: int
     ef_multiplier: int
-    fixed_salary_cents: int | None = None
-    estimated_monthly_income_cents: int
+    current_ef_balance_cents: int
+
+    @field_validator("monthly_income_cents")
+    @classmethod
+    def validate_monthly_income(cls, value: int):
+        if value <= 0:
+            raise ValueError(
+                "monthly_income_cents must be positive"
+            )
+
+        return value
+
+    @field_validator("available_savings_cents")
+    @classmethod
+    def validate_available_savings(cls, value: int | None):
+        if value is not None and value < 0:
+            raise ValueError(
+                "available_savings_cents cannot be negative"
+            )
+
+        return value
 
     @field_validator("lifestyle_pct")
     @classmethod
-    def validate_split_sums_to_100(cls, v, info):
-        total = info.data.get("freedom_funds_pct", 0) + info.data.get("essentials_pct", 0) + v
+    def validate_split_sums_to_100(cls, value, info):
+        total = (
+            info.data.get("freedom_funds_pct", 0)
+            + info.data.get("essentials_pct", 0)
+            + value
+        )
+
         if total != 100:
-            raise ValueError("freedom_funds_pct + essentials_pct + lifestyle_pct must sum to 100")
-        return v
+            raise ValueError(
+                "freedom_funds_pct + essentials_pct + "
+                "lifestyle_pct must sum to 100"
+            )
+
+        return value
 
     @field_validator("ef_multiplier")
     @classmethod
-    def validate_multiplier_range(cls, v):
-        if not (3 <= v <= 6):
-            raise ValueError("ef_multiplier must be between 3 and 6")
-        return v
+    def validate_multiplier_range(cls, value: int):
+        if not 3 <= value <= 6:
+            raise ValueError(
+                "ef_multiplier must be between 3 and 6"
+            )
 
-    @field_validator("estimated_monthly_income_cents")
+        return value
+
+    @field_validator("current_ef_balance_cents")
     @classmethod
-    def validate_income_positive(cls, v):
-        if v <= 0:
-            raise ValueError("estimated_monthly_income_cents must be positive")
-        return v
+    def validate_current_ef_balance(cls, value: int):
+        if value < 0:
+            raise ValueError(
+                "current_ef_balance_cents cannot be negative"
+            )
 
-    @model_validator(mode="after")
-    def validate_fixed_salary(self):
-        has_fixed_income = self.income_mode in {
-            IncomeMode.FIXED_ONLY,
-            IncomeMode.FIXED_PLUS_FREELANCE,
-        }
+        return value
 
-        if has_fixed_income:
-            if self.fixed_salary_cents is None or self.fixed_salary_cents <= 0:
-                raise ValueError(
-                    "A positive fixed salary is required for this income mode"
-                )
-
-            if self.fixed_salary_cents > self.estimated_monthly_income_cents:
-                raise ValueError(
-                    "Fixed salary cannot exceed estimated monthly income"
-                )
-
-        return self
 
 class OnboardingStatus(BaseModel):
     is_onboarded: bool
-    income_mode: IncomeMode | None = None
+    monthly_income_cents: int | None = None
+    available_savings_cents: int | None = None
     ef_multiplier: int | None = None
     ef_target_cents: int | None = None
+    current_ef_balance_cents: int | None = None
     current_budget_split: BudgetSplitOut | None = None

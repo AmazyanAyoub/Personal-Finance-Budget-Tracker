@@ -5,71 +5,145 @@ from sqlalchemy import extract
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.income import sync_current_month_base_income
 from app.db.session import get_db
-from app.models.enums import IncomeSource
-from app.models.income import IncomeEntry, IncomeModeConfig
+from app.models.income import IncomeConfig, IncomeEntry
 from app.models.user import User
 from app.schemas.income import (
-    FixedSalaryOut,
-    FixedSalaryUpdate,
+    AvailableSavingsOut,
+    AvailableSavingsUpdate,
     IncomeEntryCreate,
     IncomeEntryOut,
     IncomeEntryUpdate,
+    MonthlyIncomeOut,
     MonthlyIncomeSummary,
+    MonthlyIncomeUpdate,
 )
 
 router = APIRouter(prefix="/income-entries", tags=["income"])
 
 
-def _ensure_fixed_entry(db: Session, year: int, month: int) -> None:
-    """Auto-creates this month's fixed-salary entry the first time it's looked up, if one isn't set."""
-    today = date.today()
-    target = date(year, month, 1)
-    if target != today.replace(day=1):
-        return
-    mode_config = db.query(IncomeModeConfig).first()
-    if not mode_config or not mode_config.fixed_salary_cents:
-        return
-    exists = (
-        db.query(IncomeEntry)
-        .filter(IncomeEntry.source == IncomeSource.FIXED)
-        .filter(extract("year", IncomeEntry.date) == year)
-        .filter(extract("month", IncomeEntry.date) == month)
-        .first()
+def sync_and_commit_current_month(
+    db: Session,
+    year: int,
+    month: int,
+) -> None:
+    changed = sync_current_month_base_income(
+        db=db,
+        year=year,
+        month=month,
     )
-    if exists:
-        return
-    db.add(IncomeEntry(
-        source=IncomeSource.FIXED,
-        amount_cents=mode_config.fixed_salary_cents,
-        date=target,
-        note="Auto-generated fixed salary",
-    ))
-    db.commit()
+
+    if changed:
+        db.commit()
 
 
-@router.get("/fixed-salary", response_model=FixedSalaryOut)
-def get_fixed_salary(
+@router.get(
+    "/monthly-income",
+    response_model=MonthlyIncomeOut,
+)
+def get_monthly_income(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    mode_config = db.query(IncomeModeConfig).first()
-    return FixedSalaryOut(fixed_salary_cents=mode_config.fixed_salary_cents if mode_config else None)
+    config = db.query(IncomeConfig).first()
+
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete onboarding first",
+        )
+
+    return MonthlyIncomeOut(
+        monthly_income_cents=config.monthly_income_cents,
+    )
 
 
-@router.patch("/fixed-salary", response_model=FixedSalaryOut)
-def set_fixed_salary(
-    payload: FixedSalaryUpdate,
+@router.patch(
+    "/monthly-income",
+    response_model=MonthlyIncomeOut,
+)
+def update_monthly_income(
+    payload: MonthlyIncomeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    mode_config = db.query(IncomeModeConfig).first()
-    if not mode_config:
-        raise HTTPException(status_code=400, detail="Complete onboarding first")
-    mode_config.fixed_salary_cents = payload.fixed_salary_cents
-    db.commit()
-    return FixedSalaryOut(fixed_salary_cents=mode_config.fixed_salary_cents)
+    config = db.query(IncomeConfig).first()
 
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete onboarding first",
+        )
+
+    config.monthly_income_cents = payload.monthly_income_cents
+
+    today = date.today()
+
+    sync_current_month_base_income(
+        db=db,
+        year=today.year,
+        month=today.month,
+    )
+
+    db.commit()
+
+    return MonthlyIncomeOut(
+        monthly_income_cents=config.monthly_income_cents,
+    )
+
+@router.get(
+    "/available-savings",
+    response_model=AvailableSavingsOut,
+)
+def get_available_savings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    config = db.query(IncomeConfig).first()
+
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete onboarding first",
+        )
+
+    return AvailableSavingsOut(
+        available_savings_cents=(
+            config.available_savings_cents
+        ),
+    )
+
+
+@router.patch(
+    "/available-savings",
+    response_model=AvailableSavingsOut,
+)
+def update_available_savings(
+    payload: AvailableSavingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    config = db.query(IncomeConfig).first()
+
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete onboarding first",
+        )
+
+    config.available_savings_cents = (
+        payload.available_savings_cents
+    )
+
+    db.commit()
+    db.refresh(config)
+
+    return AvailableSavingsOut(
+        available_savings_cents=(
+            config.available_savings_cents
+        ),
+    )
 
 @router.post("", response_model=IncomeEntryOut)
 def create_income_entry(
@@ -77,10 +151,18 @@ def create_income_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    entry = IncomeEntry(**payload.model_dump())
+    entry = IncomeEntry(
+        name=payload.name,
+        amount_cents=payload.amount_cents,
+        date=payload.date,
+        is_recurring_base=False,
+        note=payload.note,
+    )
+
     db.add(entry)
     db.commit()
     db.refresh(entry)
+
     return entry
 
 
@@ -92,16 +174,38 @@ def list_income_entries(
     current_user: User = Depends(get_current_user),
 ):
     if year is not None and month is not None:
-        _ensure_fixed_entry(db, year, month)
+        sync_and_commit_current_month(
+            db=db,
+            year=year,
+            month=month,
+        )
+
     query = db.query(IncomeEntry)
+
     if year is not None:
-        query = query.filter(extract("year", IncomeEntry.date) == year)
+        query = query.filter(
+            extract("year", IncomeEntry.date) == year
+        )
+
     if month is not None:
-        query = query.filter(extract("month", IncomeEntry.date) == month)
-    return query.order_by(IncomeEntry.date.desc()).all()
+        query = query.filter(
+            extract("month", IncomeEntry.date) == month
+        )
+
+    return (
+        query
+        .order_by(
+            IncomeEntry.date.desc(),
+            IncomeEntry.id.desc(),
+        )
+        .all()
+    )
 
 
-@router.get("/summary", response_model=MonthlyIncomeSummary)
+@router.get(
+    "/summary",
+    response_model=MonthlyIncomeSummary,
+)
 def monthly_income_summary(
     year: int | None = Query(None),
     month: int | None = Query(None),
@@ -109,25 +213,48 @@ def monthly_income_summary(
     current_user: User = Depends(get_current_user),
 ):
     today = date.today()
-    year = year or today.year
-    month = month or today.month
-    _ensure_fixed_entry(db, year, month)
+    selected_year = year or today.year
+    selected_month = month or today.month
+
+    sync_and_commit_current_month(
+        db=db,
+        year=selected_year,
+        month=selected_month,
+    )
 
     entries = (
         db.query(IncomeEntry)
-        .filter(extract("year", IncomeEntry.date) == year)
-        .filter(extract("month", IncomeEntry.date) == month)
+        .filter(
+            extract("year", IncomeEntry.date)
+            == selected_year
+        )
+        .filter(
+            extract("month", IncomeEntry.date)
+            == selected_month
+        )
         .all()
     )
-    fixed_cents = sum(e.amount_cents for e in entries if e.source == IncomeSource.FIXED)
-    freelance_cents = sum(e.amount_cents for e in entries if e.source == IncomeSource.FREELANCE)
+
+    base_income_cents = sum(
+        entry.amount_cents
+        for entry in entries
+        if entry.is_recurring_base
+    )
+
+    additional_income_cents = sum(
+        entry.amount_cents
+        for entry in entries
+        if not entry.is_recurring_base
+    )
 
     return MonthlyIncomeSummary(
-        year=year,
-        month=month,
-        total_cents=fixed_cents + freelance_cents,
-        fixed_cents=fixed_cents,
-        freelance_cents=freelance_cents,
+        year=selected_year,
+        month=selected_month,
+        total_cents=(
+            base_income_cents + additional_income_cents
+        ),
+        base_income_cents=base_income_cents,
+        additional_income_cents=additional_income_cents,
         entry_count=len(entries),
     )
 
@@ -138,9 +265,18 @@ def get_income_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    entry = db.query(IncomeEntry).filter(IncomeEntry.id == entry_id).first()
+    entry = (
+        db.query(IncomeEntry)
+        .filter(IncomeEntry.id == entry_id)
+        .first()
+    )
+
     if not entry:
-        raise HTTPException(status_code=404, detail="Income entry not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Income entry not found",
+        )
+
     return entry
 
 
@@ -151,13 +287,35 @@ def update_income_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    entry = db.query(IncomeEntry).filter(IncomeEntry.id == entry_id).first()
+    entry = (
+        db.query(IncomeEntry)
+        .filter(IncomeEntry.id == entry_id)
+        .first()
+    )
+
     if not entry:
-        raise HTTPException(status_code=404, detail="Income entry not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+        raise HTTPException(
+            status_code=404,
+            detail="Income entry not found",
+        )
+
+    if entry.is_recurring_base:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Update the base monthly income configuration "
+                "instead"
+            ),
+        )
+
+    for field, value in payload.model_dump(
+        exclude_unset=True
+    ).items():
         setattr(entry, field, value)
+
     db.commit()
     db.refresh(entry)
+
     return entry
 
 
@@ -167,8 +325,26 @@ def delete_income_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    entry = db.query(IncomeEntry).filter(IncomeEntry.id == entry_id).first()
+    entry = (
+        db.query(IncomeEntry)
+        .filter(IncomeEntry.id == entry_id)
+        .first()
+    )
+
     if not entry:
-        raise HTTPException(status_code=404, detail="Income entry not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Income entry not found",
+        )
+
+    if entry.is_recurring_base:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "The automatically generated base income "
+                "cannot be deleted"
+            ),
+        )
+
     db.delete(entry)
     db.commit()

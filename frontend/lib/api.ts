@@ -33,9 +33,10 @@ export type Expense = {
 
 export type IncomeEntry = {
   id: number;
-  source: "fixed" | "freelance";
+  name: string;
   amount_cents: number;
   date: string;
+  is_recurring_base: boolean;
   note: string | null;
   created_at: string;
 };
@@ -60,6 +61,7 @@ export type DashboardData = {
   year: number;
   month: number;
   savings_cents: number;
+  available_savings_cents: number | null;
   ef_target_cents: number;
   ef_current_balance_cents: number;
   ef_progress_pct: number;
@@ -71,6 +73,11 @@ export type DashboardData = {
   investments_total_cents: number;
   total_debt_remaining_cents: number;
   debt_count: number;
+  regular_debt_payments_this_month_cents: number;
+  extra_debt_payments_this_month_cents: number;
+  extra_debt_payments_from_income_cents: number;
+  extra_debt_payments_from_savings_cents: number;
+  extra_debt_payments_undisclosed_cents: number;
   monthly_trend: { year: number; month: number; income_cents: number; expense_cents: number }[];
   budget_comparison: { bucket: string; planned_pct: number; actual_pct: number; planned_cents: number; actual_cents: number }[];
   spending_by_category: {
@@ -101,48 +108,76 @@ export async function login(email: string, password: string) {
 
 export async function getMe(token: string) {
   const res = await fetch(`${API_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
-  if (!res.ok) throw new Error("Unauthorized");
-  return res.json() as Promise<{ id: number; email: string }>;
+
+  if (!res.ok) {
+    throw new ApiError("Unauthorized", res.status);
+  }
+
+  return res.json() as Promise<{
+    id: number;
+    email: string;
+  }>;
 }
 
 export async function submitOnboarding(
   token: string,
   data: {
-    income_mode: string;
+    monthly_income_cents: number;
+    available_savings_cents: number | null;
     freedom_funds_pct: number;
     essentials_pct: number;
     lifestyle_pct: number;
     ef_multiplier: number;
-    estimated_monthly_income_cents: number;
-    fixed_salary_cents: number | null;
+    current_ef_balance_cents: number;
   }
 ) {
   const res = await fetch(`${API_URL}/onboarding`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(data),
   });
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Onboarding failed");
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Onboarding failed"
+    );
   }
+
   return res.json();
 }
 
 export async function getOnboardingStatus(token: string) {
   const res = await fetch(`${API_URL}/onboarding/status`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
+
   if (!res.ok) {
-    throw new ApiError("Failed to load onboarding status", res.status);
+    throw new ApiError(
+      "Failed to load onboarding status",
+      res.status
+    );
   }
+
   return res.json() as Promise<{
     is_onboarded: boolean;
-    income_mode: string | null;
+    monthly_income_cents: number | null;
     ef_multiplier: number | null;
     ef_target_cents: number | null;
+    current_ef_balance_cents: number | null;
+    available_savings_cents: number | null;
     current_budget_split: {
       id: number;
       freedom_funds_pct: number;
@@ -165,49 +200,98 @@ export async function listIncomeEntries(token: string, year?: number, month?: nu
   return res.json() as Promise<IncomeEntry[]>;
 }
 
-export async function getMonthlyIncomeSummary(token: string, year: number, month: number) {
-  const res = await fetch(`${API_URL}/income-entries/summary?year=${year}&month=${month}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error("Failed to load income summary");
+export async function getMonthlyIncomeSummary(
+  token: string,
+  year: number,
+  month: number
+) {
+  const res = await fetch(
+    `${API_URL}/income-entries/summary?year=${year}&month=${month}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to load income summary");
+  }
+
   return res.json() as Promise<{
     year: number;
     month: number;
     total_cents: number;
-    fixed_cents: number;
-    freelance_cents: number;
+    base_income_cents: number;
+    additional_income_cents: number;
     entry_count: number;
   }>;
 }
 
 export async function createIncomeEntry(
   token: string,
-  data: { source: string; amount_cents: number; date: string; note?: string }
+  data: {
+    name: string;
+    amount_cents: number;
+    date: string;
+    note?: string;
+  }
 ) {
   const res = await fetch(`${API_URL}/income-entries`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(data),
   });
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail?.[0]?.msg ?? body?.detail ?? "Failed to create income entry");
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Failed to create income entry"
+    );
   }
-  return res.json();
+
+  return res.json() as Promise<IncomeEntry>;
 }
 
 export async function updateIncomeEntry(
   token: string,
   id: number,
-  data: Partial<{ source: string; amount_cents: number; date: string; note: string }>
+  data: Partial<{
+    name: string;
+    amount_cents: number;
+    date: string;
+    note: string | null;
+  }>
 ) {
-  const res = await fetch(`${API_URL}/income-entries/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update income entry");
-  return res.json();
+  const res = await fetch(
+    `${API_URL}/income-entries/${id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Failed to update income entry"
+    );
+  }
+
+  return res.json() as Promise<IncomeEntry>;
 }
 
 export async function deleteIncomeEntry(token: string, id: number) {
@@ -304,7 +388,22 @@ export async function updateEfBalance(token: string, current_balance_cents: numb
   return res.json() as Promise<BudgetEngineStatus>;
 }
 
-export type DebtPayment = { id: number; debt_id: number; amount_cents: number; date: string; note: string | null; created_at: string };
+export type DebtPaymentType = "regular" | "extra";
+
+export type DebtPaymentFundingSource =
+  | "current_income"
+  | "existing_savings";
+
+export type DebtPayment = {
+  id: number;
+  debt_id: number;
+  amount_cents: number;
+  date: string;
+  payment_type: DebtPaymentType;
+  funding_source: DebtPaymentFundingSource | null;
+  note: string | null;
+  created_at: string;
+};
 
 export async function listDebts(token: string) {
   const res = await fetch(`${API_URL}/debts`, { headers: { Authorization: `Bearer ${token}` } });
@@ -333,13 +432,39 @@ export async function deleteDebt(token: string, id: number) {
   if (!res.ok) throw new Error("Failed to delete debt");
 }
 
-export async function logDebtPayment(token: string, debtId: number, data: { amount_cents: number; date: string; note?: string }) {
-  const res = await fetch(`${API_URL}/debts/${debtId}/payments`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to log payment");
+export async function logDebtPayment(
+  token: string,
+  debtId: number,
+  data: {
+    amount_cents: number;
+    date: string;
+    payment_type: DebtPaymentType;
+    funding_source?: DebtPaymentFundingSource | null;
+    note?: string;
+  }
+) {
+  const res = await fetch(
+    `${API_URL}/debts/${debtId}/payments`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Failed to log payment"
+    );
+  }
+
   return res.json() as Promise<Debt>;
 }
 
@@ -356,23 +481,109 @@ export async function getDashboard(token: string) {
   return res.json() as Promise<DashboardData>;
 }
 
+export async function getMonthlyIncome(token: string) {
+  const res = await fetch(
+    `${API_URL}/income-entries/monthly-income`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
-export async function getFixedSalary(token: string) {
-  const res = await fetch(`${API_URL}/income-entries/fixed-salary`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error("Failed to load fixed salary");
-  return res.json() as Promise<{ fixed_salary_cents: number | null }>;
+  if (!res.ok) {
+    throw new Error("Failed to load monthly income");
+  }
+
+  return res.json() as Promise<{
+    monthly_income_cents: number;
+  }>;
 }
 
-export async function setFixedSalary(token: string, fixed_salary_cents: number) {
-  const res = await fetch(`${API_URL}/income-entries/fixed-salary`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ fixed_salary_cents }),
-  });
-  if (!res.ok) throw new Error("Failed to save fixed salary");
-  return res.json() as Promise<{ fixed_salary_cents: number | null }>;
+export async function setMonthlyIncome(
+  token: string,
+  monthly_income_cents: number
+) {
+  const res = await fetch(
+    `${API_URL}/income-entries/monthly-income`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        monthly_income_cents,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Failed to save monthly income"
+    );
+  }
+
+  return res.json() as Promise<{
+    monthly_income_cents: number;
+  }>;
 }
 
+export async function getAvailableSavings(token: string) {
+  const res = await fetch(
+    `${API_URL}/income-entries/available-savings`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to load available savings");
+  }
+
+  return res.json() as Promise<{
+    available_savings_cents: number | null;
+  }>;
+}
+
+export async function setAvailableSavings(
+  token: string,
+  available_savings_cents: number | null
+) {
+  const res = await fetch(
+    `${API_URL}/income-entries/available-savings`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        available_savings_cents,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+
+    throw new Error(
+      body?.detail?.[0]?.msg ??
+        body?.detail ??
+        "Failed to save available savings"
+    );
+  }
+
+  return res.json() as Promise<{
+    available_savings_cents: number | null;
+  }>;
+}
 
 export type InvestmentType = { id: number; name: string };
 export type Investment = { id: number; investment_type_id: number; amount_cents: number; date: string; note: string | null; created_at: string };

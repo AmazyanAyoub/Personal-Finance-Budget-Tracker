@@ -117,8 +117,7 @@ export default function DashboardPage() {
     {
       label: "Essentials spent",
       value: formatMAD(essentialsSpentCents),
-      detail: `of ${formatMAD(essentialsBudgetCents)} planned · debt payments included`,
-      href: "/manage",
+      detail: `of ${formatMAD(essentialsBudgetCents)} planned · regular debt payments included`,      href: "/manage",
       accent: essentialsOverBudget ? "bg-danger" : "bg-brand-mid",
     },
     {
@@ -187,6 +186,94 @@ export default function DashboardPage() {
           </Link>
         ))}
       </section>
+
+      {(data.extra_debt_payments_this_month_cents > 0 ||
+        data.available_savings_cents !== null) && (
+        <section className="grid gap-4 md:grid-cols-2">
+          {data.extra_debt_payments_this_month_cents > 0 && (
+            <div className="rounded-[18px] border border-gold/30 bg-gold/10 p-6">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+                Financial move
+              </p>
+
+              <h2 className="mt-3 font-serif text-2xl">
+                Extra debt payoff
+              </h2>
+
+              <p className="mt-3 font-serif text-3xl text-foreground">
+                {formatMAD(
+                  data.extra_debt_payments_this_month_cents
+                )}
+              </p>
+
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                This reduced your debt balance but is kept
+                separate from regular monthly expenses.
+              </p>
+
+              <div className="mt-5 space-y-2 border-t border-gold/20 pt-4 text-xs text-muted-foreground">
+                {data.extra_debt_payments_from_income_cents >
+                  0 && (
+                  <p className="flex justify-between gap-4">
+                    <span>From current income</span>
+                    <span className="font-mono text-foreground">
+                      {formatMAD(
+                        data.extra_debt_payments_from_income_cents
+                      )}
+                    </span>
+                  </p>
+                )}
+
+                {data.extra_debt_payments_from_savings_cents >
+                  0 && (
+                  <p className="flex justify-between gap-4">
+                    <span>From existing savings</span>
+                    <span className="font-mono text-foreground">
+                      {formatMAD(
+                        data.extra_debt_payments_from_savings_cents
+                      )}
+                    </span>
+                  </p>
+                )}
+
+                {data.extra_debt_payments_undisclosed_cents >
+                  0 && (
+                  <p className="flex justify-between gap-4">
+                    <span>Source not disclosed</span>
+                    <span className="font-mono text-foreground">
+                      {formatMAD(
+                        data.extra_debt_payments_undisclosed_cents
+                      )}
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {data.available_savings_cents !== null && (
+            <div className="rounded-[18px] border border-border bg-surface p-6">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+                Optional context
+              </p>
+
+              <h2 className="mt-3 font-serif text-2xl">
+                Reported available savings
+              </h2>
+
+              <p className="mt-3 font-serif text-3xl text-brand">
+                {formatMAD(data.available_savings_cents)}
+              </p>
+
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                This is the amount you chose to disclose
+                outside your emergency fund. Nisba does not
+                automatically subtract debt payments from it.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Emergency fund guidance */}
       <section className="grid gap-8 rounded-[20px] border border-border bg-surface p-6 md:grid-cols-[1fr_1.2fr] md:items-center md:p-8">
@@ -276,7 +363,7 @@ export default function DashboardPage() {
 
               <div>
                 <div className="mb-3 flex flex-wrap justify-between gap-2 text-sm">
-                  <span>Expenses</span>
+                  <span>Regular Expenses</span>
                   <span className="font-mono tabular-nums">
                     {formatMAD(monthlyExpenses)}
                   </span>
@@ -312,7 +399,7 @@ export default function DashboardPage() {
           {essentialsCategories.length === 0 &&
           lifestyleCategories.length === 0 ? (
             <p className="mt-8 text-sm text-muted-foreground">
-              No expenses or debt payments logged this month yet.
+              No regular expenses or debt payments logged this month yet.
             </p>
           ) : (
             <div className="mt-8 space-y-9">
@@ -401,7 +488,8 @@ export default function DashboardPage() {
             Income and expenses over time
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            The last six months, in MAD. Expenses here are logged expenses.
+            The last six months, in MAD. Regular debt payments are included;
+            extra debt payoffs are shown separately.
           </p>
         </div>
 

@@ -2,42 +2,72 @@ from datetime import date as date_entity, datetime
 
 from pydantic import BaseModel, field_validator
 
-from app.models.enums import IncomeSource
-
 
 class IncomeEntryCreate(BaseModel):
-    source: IncomeSource
+    name: str
     amount_cents: int
     date: date_entity
     note: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str):
+        cleaned = value.strip()
+
+        if not cleaned:
+            raise ValueError("Income name is required")
+
+        if len(cleaned) > 100:
+            raise ValueError("Income name cannot exceed 100 characters")
+
+        return cleaned
+
     @field_validator("amount_cents")
     @classmethod
-    def validate_amount_positive(cls, v):
-        if v <= 0:
+    def validate_amount_positive(cls, value: int):
+        if value <= 0:
             raise ValueError("amount_cents must be positive")
-        return v
+
+        return value
 
 
 class IncomeEntryUpdate(BaseModel):
-    source: IncomeSource | None = None
+    name: str | None = None
     amount_cents: int | None = None
     date: date_entity | None = None
     note: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None):
+        if value is None:
+            return value
+
+        cleaned = value.strip()
+
+        if not cleaned:
+            raise ValueError("Income name is required")
+
+        if len(cleaned) > 100:
+            raise ValueError("Income name cannot exceed 100 characters")
+
+        return cleaned
+
     @field_validator("amount_cents")
     @classmethod
-    def validate_amount_positive(cls, v):
-        if v is not None and v <= 0:
+    def validate_amount_positive(cls, value: int | None):
+        if value is not None and value <= 0:
             raise ValueError("amount_cents must be positive")
-        return v
+
+        return value
 
 
 class IncomeEntryOut(BaseModel):
     id: int
-    source: IncomeSource
+    name: str
     amount_cents: int
-    date:  date_entity
+    date: date_entity
+    is_recurring_base: bool
     note: str | None
     created_at: datetime
 
@@ -49,21 +79,40 @@ class MonthlyIncomeSummary(BaseModel):
     year: int
     month: int
     total_cents: int
-    fixed_cents: int
-    freelance_cents: int
+    base_income_cents: int
+    additional_income_cents: int
     entry_count: int
 
 
-class FixedSalaryUpdate(BaseModel):
-    fixed_salary_cents: int | None = None
+class MonthlyIncomeUpdate(BaseModel):
+    monthly_income_cents: int
 
-    @field_validator("fixed_salary_cents")
+    @field_validator("monthly_income_cents")
     @classmethod
-    def validate_positive(cls, v):
-        if v is not None and v <= 0:
-            raise ValueError("fixed_salary_cents must be positive")
-        return v
+    def validate_positive(cls, value: int):
+        if value <= 0:
+            raise ValueError("monthly_income_cents must be positive")
+
+        return value
 
 
-class FixedSalaryOut(BaseModel):
-    fixed_salary_cents: int | None
+class MonthlyIncomeOut(BaseModel):
+    monthly_income_cents: int
+
+
+class AvailableSavingsUpdate(BaseModel):
+    available_savings_cents: int | None = None
+
+    @field_validator("available_savings_cents")
+    @classmethod
+    def validate_non_negative(cls, value: int | None):
+        if value is not None and value < 0:
+            raise ValueError(
+                "available_savings_cents cannot be negative"
+            )
+
+        return value
+
+
+class AvailableSavingsOut(BaseModel):
+    available_savings_cents: int | None
