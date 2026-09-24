@@ -425,7 +425,7 @@ export default function LandingPage() {
 
           {/* Investment cockpit */}
           <div className="relative mx-auto w-full max-w-2xl">
-            <div
+            {/* <div
               className="nisba-float-reverse absolute -right-5 bottom-20 z-20 hidden rounded-[16px] border border-gold/25 bg-gold-tint px-5 py-4 shadow-xl sm:block"
               aria-hidden="true"
             >
@@ -435,7 +435,7 @@ export default function LandingPage() {
               <p className="mt-2 font-mono text-lg text-foreground">
                 {formatMAD(illustrativeAnnualInvestment)}
               </p>
-            </div>
+            </div> */}
 
             <div className="relative overflow-hidden rounded-[30px] border border-brand/15 bg-surface p-5 shadow-[0_35px_100px_-45px_rgba(35,44,92,0.55)] sm:p-8">
               <div
