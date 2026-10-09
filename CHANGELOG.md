@@ -2,12 +2,14 @@
 
 Nisba follows Semantic Versioning. Versions before `1.0.0` represent development milestones.
 
-## [0.9.0-alpha.1] - 2026-10-04 (unreleased)
+## [0.9.0-alpha.1] - 2026-10-09 (testing)
 
-- Began the V2 financial architecture rebuild.
+- Completed the V2 financial architecture rebuild.
 - Replaced duplicated financial state with a central money-event ledger design.
 - Introduced financial profiles, allocation-plan history, goals and portfolio models.
-- This version is still uncommitted and must not be treated as a stable release.
+- Added multi-user registration and ownership isolation.
+- Rebuilt the frontend around the V2 API and workflows.
+- This remains an alpha version intended for tester feedback.
 
 ## [0.8.2] - 2026-09-24
 

@@ -84,12 +84,12 @@
     },
     {
       "version": "0.9.0-alpha.1",
-      "date": "2026-10-04",
-      "git_commit": null,
-      "alembic_revision": "414ec26352fe",
-      "status": "unreleased",
-      "summary": "V2 financial ledger architecture rebuild in progress.",
-      "note": "This version remains unreleased until the current working tree is committed and verified."
+      "date": "2026-10-09",
+      "git_commit": "5a4e0d5",
+      "alembic_revision": "f3a71c9d2e84",
+      "status": "testing",
+      "summary": "Completed the V2 ledger backend and frontend rebuild for multi-user testing.",
+      "note": "Verified with 43 backend tests, frontend lint, TypeScript checks and a production build."
     }
   ]
 }
