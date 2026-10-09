@@ -1,0 +1,95 @@
+{
+  "app_name": "Nisba",
+  "versioning": "Semantic Versioning 2.0.0",
+  "current_version": "0.9.0-alpha.1",
+  "timezone": "Africa/Casablanca",
+  "history": [
+    {
+      "version": "0.1.0",
+      "date": "2026-08-25",
+      "git_commit": "30847b6",
+      "summary": "Initial project foundation."
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-08-28",
+      "git_commit": "0da9ec0",
+      "summary": "Single-user JWT authentication."
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-09-03",
+      "git_commit": "b6281ec",
+      "summary": "Core financial models and onboarding."
+    },
+    {
+      "version": "0.3.1",
+      "date": "2026-09-03",
+      "git_commit": "65e6d35",
+      "summary": "Income management foundation."
+    },
+    {
+      "version": "0.4.0",
+      "date": "2026-09-05",
+      "git_commit": "a64ab3d",
+      "summary": "Budgeting, expenses, debts and emergency-fund phases completed."
+    },
+    {
+      "version": "0.5.0",
+      "date": "2026-09-13",
+      "git_commit": "749a49c",
+      "summary": "Original application feature roadmap completed."
+    },
+    {
+      "version": "0.5.1",
+      "date": "2026-09-18",
+      "git_commit": "398901f",
+      "summary": "Application improvements and corrections."
+    },
+    {
+      "version": "0.6.0",
+      "date": "2026-09-21",
+      "git_commit": "1e21695",
+      "summary": "Frontend design overhaul."
+    },
+    {
+      "version": "0.7.0",
+      "date": "2026-09-22",
+      "git_commit": "721a0da",
+      "summary": "Financial workflow and application logic improvements."
+    },
+    {
+      "version": "0.7.1",
+      "date": "2026-09-22",
+      "git_commit": "0070c19",
+      "summary": "Stabilization report added."
+    },
+    {
+      "version": "0.8.0",
+      "date": "2026-09-23",
+      "git_commit": "4b15233",
+      "summary": "Landing page and dashboard redesign."
+    },
+    {
+      "version": "0.8.1",
+      "date": "2026-09-24",
+      "git_commit": "7557b74",
+      "summary": "Vercel Next.js deployment build fix."
+    },
+    {
+      "version": "0.8.2",
+      "date": "2026-09-24",
+      "git_commit": "7e46568",
+      "summary": "Landing-page UI cleanup."
+    },
+    {
+      "version": "0.9.0-alpha.1",
+      "date": "2026-10-04",
+      "git_commit": null,
+      "alembic_revision": "414ec26352fe",
+      "status": "unreleased",
+      "summary": "V2 financial ledger architecture rebuild in progress.",
+      "note": "This version remains unreleased until the current working tree is committed and verified."
+    }
+  ]
+}

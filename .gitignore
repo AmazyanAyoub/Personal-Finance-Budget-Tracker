@@ -9,3 +9,4 @@ frontend/.env.local
 *.ipynb
 
 *.json
+!APP_VERSION_HISTORY.json

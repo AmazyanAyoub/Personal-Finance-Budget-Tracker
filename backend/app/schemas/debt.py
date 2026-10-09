@@ -1,92 +1,73 @@
-from datetime import date as date_entity, datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-PaymentType = Literal["regular", "extra"]
-FundingSource = Literal["current_income", "existing_savings"]
+DebtStatus = Literal["active", "paid", "archived"]
+EditableDebtStatus = Literal["active", "archived"]
+
+
+def clean_name(value: str) -> str:
+    name = value.strip()
+    if not name:
+        raise ValueError("Debt name cannot be empty")
+    return name
 
 
 class DebtCreate(BaseModel):
-    name: str
-    balance_cents: int
-    monthly_payment_cents: int
-    payoff_target_date: date_entity | None = None
+    model_config = ConfigDict(extra="forbid")
 
-    @field_validator("balance_cents", "monthly_payment_cents")
+    name: str = Field(max_length=255)
+    starting_balance_cents: int = Field(gt=0)
+    planned_monthly_payment_cents: int = Field(default=0, ge=0)
+    target_date: date | None = None
+
+    @field_validator("name")
     @classmethod
-    def validate_positive(cls, value: int):
-        if value <= 0:
-            raise ValueError("must be positive")
-
-        return value
+    def validate_name(cls, value: str) -> str:
+        return clean_name(value)
 
 
 class DebtUpdate(BaseModel):
-    name: str | None = None
-    monthly_payment_cents: int | None = None
-    payoff_target_date: date_entity | None = None
+    model_config = ConfigDict(extra="forbid")
 
-    @field_validator("monthly_payment_cents")
+    name: str | None = Field(default=None, max_length=255)
+    planned_monthly_payment_cents: int | None = Field(default=None, ge=0)
+    target_date: date | None = None
+    status: EditableDebtStatus | None = None
+
+    @field_validator("name")
     @classmethod
-    def validate_positive(cls, value: int | None):
-        if value is not None and value <= 0:
-            raise ValueError("must be positive")
+    def validate_name(cls, value: str | None) -> str | None:
+        return clean_name(value) if value is not None else None
 
-        return value
+
+class DebtPaymentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount_cents: int = Field(gt=0)
+    occurred_on: date
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
 
 class DebtOut(BaseModel):
     id: int
+    user_id: int
     name: str
     starting_balance_cents: int
     current_balance_cents: int
-    monthly_payment_cents: int
-    payoff_target_date: date_entity | None
-    total_paid_cents: int
+    amount_paid_cents: int
     progress_pct: float
-    is_paid_off: bool
+    planned_monthly_payment_cents: int
+    target_date: date | None
+    status: DebtStatus
     created_at: datetime
-
-
-class DebtPaymentCreate(BaseModel):
-    amount_cents: int
-    date: date_entity
-    payment_type: PaymentType = "regular"
-    funding_source: FundingSource | None = None
-    note: str | None = None
-
-    @field_validator("amount_cents")
-    @classmethod
-    def validate_positive(cls, value: int):
-        if value <= 0:
-            raise ValueError("amount_cents must be positive")
-
-        return value
-
-    @model_validator(mode="after")
-    def validate_funding_source(self):
-        if (
-            self.payment_type == "regular"
-            and self.funding_source is not None
-        ):
-            raise ValueError(
-                "funding_source is only used for extra payments"
-            )
-
-        return self
-
-
-class DebtPaymentOut(BaseModel):
-    id: int
-    debt_id: int
-    amount_cents: int
-    date: date_entity
-    payment_type: PaymentType
-    funding_source: FundingSource | None
-    note: str | None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True

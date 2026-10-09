@@ -3,24 +3,25 @@ import Link from "next/link";
 const SECTIONS = [
   {
     number: "01",
-    title: "Income",
-    description: "Review and record the money coming in.",
-    href: "/income",
+    title: "Money activity",
+    description: "Record income, spending, transfers, and balance corrections.",
+    href: "/money",
     color: "bg-brand",
   },
   {
     number: "02",
-    title: "Expenses",
-    description: "Log spending and see where it goes.",
-    href: "/expenses",
-    color: "bg-brand-mid",
-  },
-  {
-    number: "03",
     title: "Debts",
     description: "Track balances and payments as part of Essentials.",
     href: "/debts",
     color: "bg-gold",
+  },
+  {
+    number: "03",
+    title: "Goals",
+    description:
+      "Reserve money for your emergency fund, travel, taxes, and future plans.",
+    href: "/goals",
+    color: "bg-brand-mid",
   },
   {
     number: "04",
@@ -28,13 +29,6 @@ const SECTIONS = [
     description: "Keep a record of your investments.",
     href: "/investments",
     color: "bg-success",
-  },
-  {
-    number: "05",
-    title: "Emergency fund",
-    description: "Check your cushion and update its balance.",
-    href: "/emergency-fund",
-    color: "bg-brand",
   },
 ];
 

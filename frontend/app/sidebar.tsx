@@ -7,11 +7,10 @@ import { clearToken } from "@/lib/auth";
 
 const MONEY_PAGES = [
   "/manage",
-  "/income",
-  "/expenses",
+  "/money",
+  "/goals",
   "/debts",
   "/investments",
-  "/emergency-fund",
 ];
 
 function Navigation({
@@ -23,6 +22,7 @@ function Navigation({
 }) {
   const dashboardActive = pathname === "/dashboard";
   const manageActive = MONEY_PAGES.includes(pathname);
+  const settingsActive = pathname === "/settings";
 
   return (
     <nav className="flex flex-1 flex-col px-4 py-8" aria-label="Main navigation">
@@ -60,9 +60,74 @@ function Navigation({
         Manage money
       </Link>
 
+      <Link
+        href="/money"
+        onClick={onNavigate}
+        aria-current={pathname === "/money" ? "page" : undefined}
+        className={`mt-2 rounded-[10px] px-4 py-3 text-sm transition-colors ${
+          pathname === "/money"
+            ? "bg-brand-tint font-medium text-brand"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        }`}
+      >
+        Money activity
+      </Link>
+
+      <Link
+        href="/goals"
+        onClick={onNavigate}
+        aria-current={pathname === "/goals" ? "page" : undefined}
+        className={`mt-2 rounded-[10px] px-4 py-3 text-sm transition-colors ${
+          pathname === "/goals"
+            ? "bg-brand-tint font-medium text-brand"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        }`}
+      >
+        Goals
+      </Link>
+
+      <Link
+        href="/debts"
+        onClick={onNavigate}
+        aria-current={pathname === "/debts" ? "page" : undefined}
+        className={`mt-2 rounded-[10px] px-4 py-3 text-sm transition-colors ${
+          pathname === "/debts"
+            ? "bg-brand-tint font-medium text-brand"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        }`}
+      >
+        Debts
+      </Link>
+
+      <Link
+        href="/investments"
+        onClick={onNavigate}
+        aria-current={pathname === "/investments" ? "page" : undefined}
+        className={`mt-2 rounded-[10px] px-4 py-3 text-sm transition-colors ${
+          pathname === "/investments"
+            ? "bg-brand-tint font-medium text-brand"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        }`}
+      >
+        Investments
+      </Link>
+
       <p className="mt-3 px-4 text-xs leading-relaxed text-muted-foreground">
-        Income, spending, debts, investments, and your emergency fund.
+        Income, spending, allocations, debts, goals, and investments.
       </p>
+
+      <Link
+        href="/settings"
+        onClick={onNavigate}
+        aria-current={settingsActive ? "page" : undefined}
+        className={`mt-3 rounded-[10px] px-4 py-3 text-sm transition-colors ${
+          settingsActive
+            ? "bg-brand-tint font-medium text-brand"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        }`}
+      >
+        Settings
+      </Link>
     </nav>
   );
 }

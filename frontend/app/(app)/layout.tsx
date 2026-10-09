@@ -54,7 +54,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (onboarding && !onboarding.is_onboarded) {
+    if (onboarding && !onboarding.completed) {
       router.replace("/onboarding");
     }
   }, [sessionExpired, onboarding, router]);
@@ -77,7 +77,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (onboarding && !onboarding.is_onboarded) {
+  if (onboarding && !onboarding.completed) {
     return (
       <LoadingScreen
         title="Preparing your setup"

@@ -1,160 +1,78 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models.debt import Debt, DebtPayment
 from app.models.user import User
-from app.schemas.debt import DebtCreate, DebtOut, DebtPaymentCreate, DebtPaymentOut, DebtUpdate
+from app.schemas.debt import DebtCreate, DebtOut, DebtPaymentCreate, DebtUpdate
+from app.services.debts import DebtConflictError, DebtError, DebtNotFoundError, create_debt, get_debt, list_debts, pay_debt, update_debt
+
 
 router = APIRouter(prefix="/debts", tags=["debts"])
 
 
-def _to_debt_out(debt: Debt) -> DebtOut:
-    total_paid = sum(p.amount_cents for p in debt.payments)
-    current_balance = max(debt.balance_cents - total_paid, 0)
-    progress_pct = min(round((total_paid / debt.balance_cents) * 100, 1), 100.0) if debt.balance_cents else 0.0
-    return DebtOut(
-        id=debt.id,
-        name=debt.name,
-        starting_balance_cents=debt.balance_cents,
-        current_balance_cents=current_balance,
-        monthly_payment_cents=debt.monthly_payment_cents,
-        payoff_target_date=debt.payoff_target_date,
-        total_paid_cents=total_paid,
-        progress_pct=progress_pct,
-        is_paid_off=current_balance <= 0,
-        created_at=debt.created_at,
-    )
-
-
-@router.post("", response_model=DebtOut)
-def create_debt(
-    payload: DebtCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = Debt(**payload.model_dump())
-    db.add(debt)
-    db.commit()
-    db.refresh(debt)
-    return _to_debt_out(debt)
+def _raise_debt_error(exc: DebtError) -> None:
+    """Converts debt service errors into HTTP responses."""
+    if isinstance(exc, DebtNotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if isinstance(exc, DebtConflictError):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[DebtOut])
-def list_debts(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debts = db.query(Debt).order_by(Debt.created_at.desc()).all()
-    return [_to_debt_out(d) for d in debts]
+def read_debts(include_archived: bool = Query(default=False), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        return list_debts(db, current_user.id, include_archived)
+    except DebtError as exc:
+        _raise_debt_error(exc)
+
+
+@router.post("", response_model=DebtOut, status_code=status.HTTP_201_CREATED)
+def add_debt(payload: DebtCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        result = create_debt(db, current_user.id, payload)
+        db.commit()
+        return result
+    except DebtError as exc:
+        db.rollback()
+        _raise_debt_error(exc)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/{debt_id}", response_model=DebtOut)
-def get_debt(
-    debt_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = db.query(Debt).filter(Debt.id == debt_id).first()
-    if not debt:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    return _to_debt_out(debt)
+def read_debt(debt_id: int = Path(gt=0), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        return get_debt(db, current_user.id, debt_id)
+    except DebtError as exc:
+        _raise_debt_error(exc)
 
 
 @router.patch("/{debt_id}", response_model=DebtOut)
-def update_debt(
-    debt_id: int,
-    payload: DebtUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = db.query(Debt).filter(Debt.id == debt_id).first()
-    if not debt:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(debt, field, value)
-    db.commit()
-    db.refresh(debt)
-    return _to_debt_out(debt)
-
-
-@router.delete("/{debt_id}", status_code=204)
-def delete_debt(
-    debt_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = db.query(Debt).filter(Debt.id == debt_id).first()
-    if not debt:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    db.delete(debt)
-    db.commit()
+def edit_debt(payload: DebtUpdate, debt_id: int = Path(gt=0), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        result = update_debt(db, current_user.id, debt_id, payload)
+        db.commit()
+        return result
+    except DebtError as exc:
+        db.rollback()
+        _raise_debt_error(exc)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/{debt_id}/payments", response_model=DebtOut)
-def log_payment(
-    debt_id: int,
-    payload: DebtPaymentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = (
-        db.query(Debt)
-        .filter(Debt.id == debt_id)
-        .first()
-    )
-
-    if not debt:
-        raise HTTPException(
-            status_code=404,
-            detail="Debt not found",
-        )
-
-    total_paid_cents = sum(
-        payment.amount_cents
-        for payment in debt.payments
-    )
-
-    remaining_balance_cents = max(
-        debt.balance_cents - total_paid_cents,
-        0,
-    )
-
-    if remaining_balance_cents == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="This debt is already paid off",
-        )
-
-    if payload.amount_cents > remaining_balance_cents:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Payment cannot exceed the remaining "
-                "debt balance"
-            ),
-        )
-
-    payment = DebtPayment(
-        debt_id=debt_id,
-        **payload.model_dump(),
-    )
-
-    db.add(payment)
-    db.commit()
-    db.refresh(debt)
-
-    return _to_debt_out(debt)
-
-
-@router.get("/{debt_id}/payments", response_model=list[DebtPaymentOut])
-def list_payments(
-    debt_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    debt = db.query(Debt).filter(Debt.id == debt_id).first()
-    if not debt:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    return db.query(DebtPayment).filter(DebtPayment.debt_id == debt_id).order_by(DebtPayment.date.desc()).all()
+def record_payment(payload: DebtPaymentCreate, debt_id: int = Path(gt=0), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=100), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        result = pay_debt(db, current_user.id, debt_id, payload, idempotency_key)
+        db.commit()
+        return result
+    except DebtError as exc:
+        db.rollback()
+        _raise_debt_error(exc)
+    except Exception:
+        db.rollback()
+        raise
