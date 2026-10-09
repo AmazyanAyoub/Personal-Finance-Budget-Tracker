@@ -17,7 +17,7 @@ app = FastAPI(title="Nisba API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=[*settings.BACKEND_CORS_ORIGINS, "https://personal-finance-budget-tracker.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
